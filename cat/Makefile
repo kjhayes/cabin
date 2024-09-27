@@ -1,0 +1,3 @@
+
+cat-obj += main.o
+
