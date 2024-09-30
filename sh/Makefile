@@ -1,4 +1,5 @@
 
 sh-obj += \
-	main.o
+	main.o \
+	command.o
 

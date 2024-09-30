@@ -1,166 +1,149 @@
 
 #include "kanawha/sys-wrappers.h"
-#include "kanawha/uapi/spawn.h"
-#include "kanawha/uapi/environ.h"
-#include "kanawha/uapi/errno.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <errno.h>
 
-char *exec_path = "";
-char *argv_data = "";
-
-static int
-create_thread(
-        int(*thread_f)(void),
-        pid_t *pid)
-{
-    extern void _thread_start(void);
-
-    int res;
-
-    res = kanawha_sys_spawn(
-            _thread_start,
-            (void*)thread_f,
-            SPAWN_MMAP_SHARED|SPAWN_ENV_CLONE|SPAWN_FILES_NONE,
-            pid);
-
-    if(res) {
-        puts("kanawha_sys_spawn Failed!\n");
-        kanawha_sys_exit(-res);
-    }
-
-    return res;
-}
-
-static int
-do_exec(void)
-{
-    int res;
-
-    fd_t exec_file;
-
-    res = kanawha_sys_open(
-                exec_path,
-                FILE_PERM_EXEC|FILE_PERM_READ,
-                0,
-                &exec_file);
-    if(res) {
-        return res;
-    }
-
-    res = kanawha_sys_environ("ARGV", argv_data, strlen(argv_data), ENV_SET);
-    if(res) {
-        return res;
-    }
-
-    res = kanawha_sys_exec(
-            exec_file,
-            0);
-    if(res) {
-        return res;
-    }
-
-    // We should never reach here
-    return 1;
-}
-
-static void
-do_command(void)
-{
-    if(strcmp(argv_data,"") == 0) {
-        if(strcmp(exec_path,"exit") == 0) {
-            kanawha_sys_exit(0);
-        }
-        if(strcmp(exec_path,"echo") == 0) {
-            puts(argv_data);
-        }
-    } 
-
-    pid_t pid;
-    int res = create_thread(do_exec, &pid);
-    if(res) {
-        puts("Failed to launch process!\n");
-    }
-
-    int exitcode;
-    while(kanawha_sys_reap(pid, 0, &exitcode)) {}
-}
+extern int
+do_command(const char *command);
 
 int
 main(int argc, const char **argv)
 {
     int running = 1;
 
-    const size_t buffer_len = 0x2000;
-    char input_buffer[buffer_len];
+#define BUFLEN 0x4000
+    char *command_buffer = malloc(BUFLEN);
+    if(command_buffer == NULL) {
+        fputs("Could not allocate command buffer!\n", stderr);
+        return -1;
+    }
+
+    int interactive;
+
+    char *script_buffer = NULL;
+    size_t script_size = 0;
+    size_t script_index = 0;
+
+    if(argc > 1) {
+        interactive = 0;
+
+        const char *script = argv[1];
+
+        FILE *script_file = fopen(script, "r");
+        if(script_file == NULL) {
+            printf("Could not open script \"%s\"!\n", script);
+            return -1;
+        }
+
+        fseek(script_file, 0, SEEK_END);
+        script_size = ftell(script_file);
+        fseek(script_file, 0, SEEK_SET);
+
+        script_buffer = malloc(script_size);
+        if(script_buffer == NULL) {
+            return -1;
+        }
+
+        size_t to_read = script_size;
+        char *buf_iter = script_buffer;
+        while(to_read) {
+            ssize_t read = fread(buf_iter, 1, to_read, script_file);
+            if(read <= 0) {
+                fprintf(stderr, "Failed to read script \"%s\"!\n", argv[1]);
+                return -1;
+            }
+            buf_iter += read;
+            to_read -= read;
+        }
+
+        fclose(script_file);
+
+    } else {
+        interactive = 1;
+    }
 
     while(running)
     {
-        puts("> ");
+        if(interactive) {
+            puts("sh> ");
+        }
 
         int prev_was_whitespace = 1;
         size_t input_end = 0;
         
         do {
-            char c = getchar();
+            int i;
+            if(interactive) {
+                i = getchar();
+            } else {
+                if(script_index >= script_size) {
+                    running = 0;
+                    break;
+                }
+                i = script_buffer[script_index];
+                script_index++;
+            }
+
+            if(i == EOF) {
+                running = 0;
+                break;
+            }
+            char c = i;
 
             if(c == '\n' || c == '\r') {
-                puts("\n");
+                if(interactive) {
+                    puts("\n");
+                }
                 break;
+            }
+
+            // Backspace-Like Characters
+            switch(c) {
+              case '\b':
+              case 127:
+                input_end--;
+                if(interactive) {
+                    putchar('\b');
+                    putchar(' ');
+                    putchar('\b');
+                }
+                continue;
             }
 
             if(!isprint(c)) {
                 continue;
             }
 
-            char put_buf[2];
-            put_buf[0] = c;
-            put_buf[1] = '\0';
-            puts(put_buf);
-
-            switch(c) {
-                case ' ':
-                case '\t':
-                    if(prev_was_whitespace) {
-                        continue;
-                    } else {
-                        c = ' ';
-                        prev_was_whitespace = 1;
-                        break;
-                    }
-                default:
-                    prev_was_whitespace = 0;
-                    break;
+            if(interactive) {
+                putchar(c);
             }
-            if(input_end < buffer_len-1) {
-                input_buffer[input_end] = c;
+
+            if(input_end < BUFLEN-1) {
+                command_buffer[input_end] = c;
                 input_end++;
             }
         } while(1);
 
-        input_buffer[input_end] = '\0';
+        command_buffer[input_end] = '\0';
 
-        exec_path = &input_buffer[0];
-        argv_data = &input_buffer[0];
-
-        while(1) {
-            char val = *argv_data;
-            if(val == '\0') {
-                argv_data = "";
-                break;
+        int res = do_command(command_buffer);
+        if(res) {
+            free(command_buffer);
+            if(script_buffer) {
+                free(script_buffer);
             }
-            else if(val == ' ') {
-                *argv_data = '\0';
-                argv_data++;
-                break;
-            }
-            argv_data++;
+            return res;
         }
-
-        do_command();
     }
+
+    if(script_buffer) {
+        free(script_buffer);
+    }
+    free(command_buffer);
+    return 0;
 }
 

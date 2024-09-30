@@ -1,0 +1,4 @@
+
+ls-obj += \
+	main.o
+

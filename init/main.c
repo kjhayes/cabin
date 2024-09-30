@@ -8,9 +8,12 @@
 
 #include <string.h>
 
-#define STDIN_PATH  "/kbd/ps2-kbd-0"
-#define STDOUT_PATH "/chr/vga-serial"
-#define STDERR_PATH "/chr/vga-serial"
+//#define STDIN_PATH  "/kbd/ps2-kbd-0"
+//#define STDOUT_PATH "/chr/vga-serial"
+//#define STDERR_PATH "/chr/vga-serial"
+#define STDIN_PATH  "/chr/COM0"
+#define STDOUT_PATH "/chr/COM0"
+#define STDERR_PATH "/chr/COM0"
 
 static const char *exec_path = NULL;
 
@@ -134,11 +137,6 @@ int exec_thread(void)
         return res;
     }
 
-    res = kanawha_sys_environ("ARGV", NULL, 0, ENV_CLEAR);
-    if(res) {
-        return res;
-    }
-
     // We're going to be leaking a whole stack here (whoops).
     res = kanawha_sys_exec(exec_fd, 0);
     if(res) {
@@ -183,33 +181,31 @@ int main(int argc, const char **argv)
 
     pid_t child_pid;
 
-    if(argc < 1) {
+    if(argc < 2) {
         return 2;
     }
 
-    exec_path = argv[0];
+    exec_path = argv[1];
 
     if(exec_path == NULL) {
         return 3;
     }
 
-    while(1) {
-        res = run_exec_thread(exec_thread, &child_pid);
-        if(res) {
-            kanawha_sys_exit(-res);
-        }
-        int exitcode;
-        do {
-            int reap_ret = kanawha_sys_reap(child_pid, 0, &exitcode);
-            if(reap_ret == 0) {
-                break;
-            }
-            if(reap_ret == -ENXIO) {
-                return -1;
-            }
-        } while(1);
+    res = run_exec_thread(exec_thread, &child_pid);
+    if(res) {
+        kanawha_sys_exit(-res);
     }
+    int exitcode;
+    do {
+        int reap_ret = kanawha_sys_reap(child_pid, 0, &exitcode);
+        if(reap_ret == 0) {
+            break;
+        }
+        if(reap_ret == -ENXIO) {
+            return -1;
+        }
+    } while(1);
 
-    return 0;
+    return exitcode;
 }
 

@@ -42,7 +42,11 @@ POSTLINK := $(LIBC_PATH) $(KLIB_PATH) $(CRTN_PATH)
 BINARIES := \
 	init \
 	cat \
-	sh
+	sh \
+	ls \
+	mount \
+	cowsay \
+	test
 
 define binary_build_rules =
 

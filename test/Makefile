@@ -1,0 +1,4 @@
+
+test-obj += \
+	main.o
+
