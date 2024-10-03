@@ -105,11 +105,13 @@ main(int argc, const char **argv)
             switch(c) {
               case '\b':
               case 127:
-                input_end--;
-                if(interactive) {
-                    putchar('\b');
-                    putchar(' ');
-                    putchar('\b');
+                if(input_end > 0) {
+                    input_end--;
+                    if(interactive) {
+                        putchar('\b');
+                        putchar(' ');
+                        putchar('\b');
+                    }
                 }
                 continue;
             }

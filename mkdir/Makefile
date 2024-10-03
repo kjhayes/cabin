@@ -1,0 +1,4 @@
+
+mkdir-obj += \
+	main.o
+

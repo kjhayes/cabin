@@ -7,15 +7,15 @@
 int main(int argc, const char **argv) {
     int res;
 
-    //if(argc < 5) {
-    //    //puts("mount: Too Few Arguments\n");
-    //    //puts("Usage: mount [SOURCE] [DIR] [MOUNTPOINT] [TYPE] {SPECIAL}\n");
-    //    return -1;
-    //}
+    if(argc < 5) {
+        puts("mount: Too Few Arguments\n");
+        puts("Usage: mount [SOURCE] [DIR] [MOUNTPOINT] [TYPE] {SPECIAL}\n");
+        return -1;
+    }
 
     unsigned long flags = MOUNT_FILE;
 
-    if(argc >= 5) {
+    if(argc > 5) {
         flags = MOUNT_SPECIAL;
     }
 
@@ -31,7 +31,7 @@ int main(int argc, const char **argv) {
             0,
             &dir);
     if(res) {
-        //fprintf(stderr, "mount: Failed to open directory \"%s\"\n", dir_path);
+        fprintf(stderr, "mount: Failed to open directory \"%s\"\n", dir_path);
         return res;
     }
 
@@ -42,7 +42,7 @@ int main(int argc, const char **argv) {
             fs_type,
             flags);
     if(res) {
-        //fprintf(stderr, "mount: mount syscall failed!\n");
+        fprintf(stderr, "mount: mount syscall failed!\n");
         return res;
     }
 

@@ -45,6 +45,7 @@ BINARIES := \
 	sh \
 	ls \
 	mount \
+	mkdir \
 	cowsay \
 	test
 
