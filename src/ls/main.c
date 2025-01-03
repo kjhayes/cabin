@@ -16,6 +16,8 @@ int main(int argc, const char **argv)
         dir_path = argv[1];
     }
 
+    int show_all = 0;
+
     fd_t dir;
     res = kanawha_sys_open(
             dir_path,
@@ -51,8 +53,10 @@ int main(int argc, const char **argv)
 
         name_buf[NAMELEN-1] = '\0';
 
-        puts(name_buf);
-        puts(" ");
+        if(show_all || name_buf[0] != '.') {
+          puts(name_buf);
+          puts(" ");
+        }
 
         res = kanawha_sys_dirnext(dir);
         if(res && res != -ENXIO) {

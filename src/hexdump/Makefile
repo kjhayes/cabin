@@ -1,0 +1,4 @@
+
+hexdump-obj += \
+	main.o
+

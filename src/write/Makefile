@@ -1,0 +1,4 @@
+
+write-obj += \
+	main.o
+

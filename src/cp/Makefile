@@ -1,0 +1,4 @@
+
+cp-obj += \
+	main.o
+

@@ -1,5 +1,7 @@
 
 #include "kanawha/sys-wrappers.h"
+#include "command.h"
+#include "directive.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,8 +9,39 @@
 #include <ctype.h>
 #include <errno.h>
 
-extern int
-do_command(const char *command);
+static int
+run_line(const char *raw)
+{
+    int res;
+    struct simple_cmd *simple = parse_simple_cmd(raw);
+    if(simple == NULL) {
+        return -EINVAL;
+    }
+
+    if(simple->command == NULL) {
+        // Empty command
+        destroy_simple_cmd(simple);
+        return 0;
+    }
+
+    if(is_directive(simple)) {
+        return run_directive(simple);
+    } else {
+        struct cmd *cmd = parse_cmd(simple);
+        if(cmd == NULL) {
+            return 0;
+        }
+
+        pid_t child;
+        res = fork_cmd(cmd, &child);
+        if(res) {
+            return res;
+        }
+        int exitcode;
+        while(kanawha_sys_reap(child, 0, &exitcode)) {}
+        return 0;
+    }
+}
 
 int
 main(int argc, const char **argv)
@@ -89,9 +122,9 @@ main(int argc, const char **argv)
             }
 
             if(i == EOF) {
-                running = 0;
-                break;
+                continue;
             }
+
             char c = i;
 
             if(c == '\n' || c == '\r') {
@@ -132,7 +165,7 @@ main(int argc, const char **argv)
 
         command_buffer[input_end] = '\0';
 
-        int res = do_command(command_buffer);
+        int res = run_line(command_buffer);
         if(res) {
             free(command_buffer);
             if(script_buffer) {

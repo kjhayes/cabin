@@ -33,12 +33,12 @@ setup_stdstreams(void)
         goto err0;
     }
 
-    if(_stdin != 1) {
+    if(_stdin != 0) {
         res = kanawha_sys_fswap(_stdin, 1);
         if(res) {
             goto err1;
         }
-        _stdin = 1;
+        _stdin = 0;
     }
 
     res = kanawha_sys_open(
@@ -50,12 +50,12 @@ setup_stdstreams(void)
         goto err1;
     }
 
-    if(_stdout != 2) {
+    if(_stdout != 1) {
         res = kanawha_sys_fswap(_stdout, 2);
         if(res) {
             goto err2;
         }
-        _stdout = 2;
+        _stdout = 1;
     }
 
     res = kanawha_sys_open(
@@ -67,12 +67,12 @@ setup_stdstreams(void)
         goto err1;
     }
 
-    if(_stderr != 3) {
+    if(_stderr != 2) {
         res = kanawha_sys_fswap(_stderr, 3);
         if(res) {
             goto err2;
         }
-        _stderr = 3;
+        _stderr = 2;
     }
 
     return 0;
@@ -169,6 +169,7 @@ int main(int argc, const char **argv)
     if(res) {
         return res;
     }
+
     res = kanawha_sys_mount(
             "kbd",
             root,

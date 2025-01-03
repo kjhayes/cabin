@@ -1,0 +1,4 @@
+
+rmmod-obj += \
+	main.o
+

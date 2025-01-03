@@ -1,0 +1,4 @@
+
+xlatekbd-obj += \
+	main.o
+

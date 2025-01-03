@@ -1,0 +1,4 @@
+
+insmod-obj += \
+	main.o
+

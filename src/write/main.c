@@ -5,7 +5,7 @@ int
 main(int argc, const char **argv)
 {
     if(argc <= 1) {
-        fprintf(stderr, "Usage: test [OUTPUT-FILE] [ARGS...]\n");
+        fprintf(stderr, "Usage: write [OUTPUT-FILE]\n");
         return -1;
     }
 
@@ -16,8 +16,15 @@ main(int argc, const char **argv)
         return -1;
     }
 
-    for(int i = 2; i < argc; i++) {
-        fprintf(target, "%s\n", argv[i]);
+    while(1) {
+        int c = getchar();
+        if(c == EOF) {
+            break;
+        }
+        if(c == '$') {
+            break;
+        }
+        fputc(c, target);
     }
 
     return 0;

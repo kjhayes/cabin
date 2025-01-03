@@ -55,3 +55,7 @@ build/
 initrd.sh
 compile_commands.json
 .cache/
+
+# Log Files from running the kernel in a VM
+*.log
+
