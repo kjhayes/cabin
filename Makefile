@@ -4,22 +4,29 @@ export
 default:
 	@
 
+# Set these to the root directories of a compatible version of
+# the Kanawha Kernel and Elk Library Projects
+ELK_ROOT_DIR := ../elk/
+KANAWHA_ROOT_DIR := ../kanawha/
+
+# Root directory of Cabin
 ROOT_DIR := $(shell pwd)
+
 SOURCE_DIR := $(ROOT_DIR)/src
 SCRIPTS_DIR := $(ROOT_DIR)/scripts
 SETUPS_DIR := $(ROOT_DIR)/setups
 
+# All output files should end up in this directory
+# IMPORTANT SAFETY NOTE: "make clean" simply deletes this directory
 OUTPUT_DIR := $(ROOT_DIR)/build
 $(shell mkdir -p $(OUTPUT_DIR))
 
-ELK_ROOT_DIR := ../elk/
-LIBC_INCLUDE_DIR := $(ELK_ROOT_DIR)/include/libc
-POSIX_INCLUDE_DIR := $(ELK_ROOT_DIR)/include/posix
-KLIB_INCLUDE_DIR := $(ELK_ROOT_DIR)/include/
+LIBC_INCLUDE_DIR ?= $(ELK_ROOT_DIR)/include/libc
+POSIX_INCLUDE_DIR ?= $(ELK_ROOT_DIR)/include/posix
+KLIB_INCLUDE_DIR ?= $(ELK_ROOT_DIR)/include/
 
-KANAWHA_ROOT_DIR := ../kanawha/
-KANAWHA_INCLUDE_DIR := $(KANAWHA_ROOT_DIR)/include
-KANAWHA_OUTPUT_DIR := $(KANAWHA_ROOT_DIR)/build
+KANAWHA_INCLUDE_DIR ?= $(KANAWHA_ROOT_DIR)/include
+KANAWHA_OUTPUT_DIR ?= $(KANAWHA_ROOT_DIR)/build
 
 ELK_LIB_DIR := $(ELK_ROOT_DIR)/build
 ELK_LINK_DIR := $(ELK_ROOT_DIR)/link
@@ -41,6 +48,7 @@ COMMON_FLAGS += \
 				-mgeneral-regs-only \
 				-ffreestanding
 
+CFLAGS += -O0
 AFLAGS += -D__ASSEMBLER__
 
 PRELINK := $(CRT0_PATH) $(CRTI_PATH)
