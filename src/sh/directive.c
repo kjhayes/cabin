@@ -113,7 +113,7 @@ do_chroot(struct simple_cmd *cmd)
     int res;
     res = kanawha_sys_open(
             path,
-            FILE_PERM_WRITE,
+            FILE_PERM_READ,
             0,
             &file);
     if(res) {
@@ -121,6 +121,33 @@ do_chroot(struct simple_cmd *cmd)
     }
 
     res = kanawha_sys_chroot(file);
+    if(res) {
+        return res;
+    }
+
+    kanawha_sys_close(file);
+
+    return 0;
+}
+
+static int
+do_cd(struct simple_cmd *cmd)
+{
+    const char *path = cmd->args->value;
+
+    fd_t file;
+
+    int res;
+    res = kanawha_sys_open(
+            path,
+            FILE_PERM_READ,
+            0,
+            &file);
+    if(res) {
+        return res;
+    }
+
+    res = kanawha_sys_chwdir(file);
     if(res) {
         return res;
     }
@@ -231,6 +258,10 @@ static struct directive_handler {
     {
         .handler = do_chroot,
         .directive = "chroot",
+    },
+    {
+        .handler = do_cd,
+        .directive = "cd",
     },
     {
         .handler = do_getenv,

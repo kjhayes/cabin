@@ -10,7 +10,7 @@ int main(int argc, const char **argv)
 {
     int res;
 
-    const char *dir_path = "/";
+    const char *dir_path = ".";
 
     if(argc >= 2) {
         dir_path = argv[1];
