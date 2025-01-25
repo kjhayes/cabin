@@ -10,7 +10,7 @@ main(int argc, const char **argv)
     }
 
     const char *path = argv[1];
-    FILE *target = fopen(path, "w");
+    FILE *target = fopen(path, "a");
     if(target == NULL) {
         fprintf(stderr, "Could not open or create file \"%s\"!\n", path);
         return -1;

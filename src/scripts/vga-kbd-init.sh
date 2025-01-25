@@ -19,10 +19,10 @@ mount /root/sys/ramfile/initrd /root/sys/ initrd cpio
 
 chroot /root
 
-setstdout /sys/chr/COM0
-setstderr /sys/chr/COM0
+setstdout /sys/chr/vga-serial
+setstderr /sys/chr/vga-serial
 
 setenv PATH /sys/initrd/
 
-exec xlatekbd /sys/kbd/ps2-kbd-0 | sh | vga-fb-term /sys/ramfile/vga-fb
+exec xlatekbd /sys/kbd/ps2-kbd-0 | sh
 

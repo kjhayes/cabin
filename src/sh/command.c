@@ -309,6 +309,32 @@ destroy_simple_cmd(struct simple_cmd *cmd)
  * Compound Commands
  */
 
+static void
+dump_cmd(struct cmd *cmd) {
+    switch(cmd->type) {
+        case CMD_SIMPLE:
+            printf("SIMPLE(%s)", cmd->primary->command);
+            break;
+        case CMD_SECONDARY_INPUT:
+            printf("(");
+            dump_cmd(cmd->secondary);
+            printf(" | SIMPLE(%s))", cmd->primary->command);
+            break;
+        case CMD_SECONDARY_AND:
+            printf("(");
+            dump_cmd(cmd->secondary);
+            printf(" && SIMPLE(%s))", cmd->primary->command);
+            break;
+        case CMD_SECONDARY_OR:
+            printf("(");
+            dump_cmd(cmd->secondary);
+            printf(" && SIMPLE(%s))", cmd->primary->command);
+            break;
+        default:
+            printf("ERROR");
+            break;
+    }
+}
 
 int
 exec_cmd(struct cmd *cmd)
@@ -359,6 +385,11 @@ fork_cmd(
         struct cmd *cmd,
         pid_t *pid)
 {
+    printf("Forking Command: ");
+    dump_cmd(cmd);
+    printf("\n");
+
+
     int res = create_thread(
             exec_cmd_thread_wrapper,
             (void*)cmd,

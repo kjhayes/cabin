@@ -69,7 +69,8 @@ BINARIES := \
 	hexdump \
 	insmod \
 	rmmod \
-	xlatekbd
+	xlatekbd \
+	vga-fb-term
 
 define binary_build_rules =
 
