@@ -8,6 +8,8 @@ $(INITRD_ROOT): $(OUTPUT_DIR) $(BINARIES)
 	mkdir -p $@
 	cp $(addprefix $(OUTPUT_DIR)/,$(BINARIES)) $@
 	cp $(SOURCE_DIR)/scripts/init.sh $@
+	cp $(SOURCE_DIR)/scripts/init-vga.sh $@
+	cp $(SOURCE_DIR)/scripts/init-doom.sh $@
 	cp $(ROOT_DIR)/initrd-extra/* $@
 
 initrd: $(OUTPUT_DIR)/initrd

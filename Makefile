@@ -45,7 +45,6 @@ COMMON_FLAGS += \
 				-fno-pie \
 				-fno-pic \
 				-nostdlib \
-				-mgeneral-regs-only \
 				-ffreestanding
 
 CFLAGS += -O0
@@ -59,6 +58,7 @@ LDFLAGS += -T $(ELK_LINK_DIR)/link.x64.ld
 BINARIES := \
 	init \
 	cat \
+	more \
 	sh \
 	cp \
 	ls \
@@ -70,7 +70,10 @@ BINARIES := \
 	insmod \
 	rmmod \
 	xlatekbd \
-	vga-fb-term
+	vga-fb-term \
+	vga-splash \
+	doomgeneric \
+	fault
 
 define binary_build_rules =
 

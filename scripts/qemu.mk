@@ -8,7 +8,7 @@ QEMU_FLAGS += -cdrom $(ISO)
 QEMU_FLAGS += -chardev stdio,id=chardev0,logfile=serial.log
 QEMU_FLAGS += -chardev memory,id=chardev1,logfile=pciserial.log
 QEMU_FLAGS += -serial chardev:chardev0
-QEMU_FLAGS += -m 2G
+QEMU_FLAGS += -m 1G
 QEMU_FLAGS += -device VGA
 QEMU_FLAGS += -M hpet=on
 QEMU_FLAGS += -smp 2

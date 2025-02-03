@@ -1,0 +1,3 @@
+
+more-obj += main.o
+

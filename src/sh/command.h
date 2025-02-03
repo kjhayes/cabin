@@ -59,4 +59,7 @@ parse_cmd(struct simple_cmd *simple);
 int
 destroy_cmd(struct cmd *cmd);
 
+void
+dump_cmd(struct cmd *cmd);
+
 #endif

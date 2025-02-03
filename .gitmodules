@@ -1,0 +1,3 @@
+[submodule "src/doomgeneric"]
+	path = src/doomgeneric
+	url = git@github.com:kjhayes/doomgeneric-cabin.git

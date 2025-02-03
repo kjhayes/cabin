@@ -72,7 +72,7 @@ int main(int argc, const char **argv)
             memmove(fb_buffer,\
                     fb_buffer + (FB_CHARSIZE * FB_WIDTH),\
                     (FB_CHARSIZE * FB_WIDTH * (FB_HEIGHT-1)));\
-            memset(fb_buffer + (FB_CHARSIZE * FB_WIDTH * (FB_HEIGHT-1)), 0, FB_CHARSIZE * FB_WIDTH);\
+            memset(fb_buffer + (FB_CHARSIZE * (FB_WIDTH * (FB_HEIGHT-1))), 0, FB_CHARSIZE * FB_WIDTH);\
             cur_y = FB_HEIGHT-1;\
         }\
     } while(0)
@@ -102,23 +102,21 @@ int main(int argc, const char **argv)
     kanawha_sys_flush(file, 0);
     while(1) {
         char c = getchar();
-        if(c == '$') {
-            break;
-        }
+
         if(c == '\n') {
             CR();
             LF();
         }
-        if(c == '\r') {
-            // Ignore \r
+        else if(c == '\r') {
+            // Ignore
         }
-        if(c == '\t') {
+        else if(c == '\t') {
             for(int i = 0; i < 4; i++) {
                 SET_CUR(' ');
                 ADVANCE_CUR();
             }
         }
-        if(c == '\b') {
+        else if(c == '\b') {
             cur_x--;
             if(cur_x >= 0) {
                 SET_CUR(' ');

@@ -9,6 +9,9 @@
 #include <kanawha/uapi/environ.h>
 
 static int
+do_help(struct simple_cmd *cmd);
+
+static int
 do_exit(struct simple_cmd *cmd)
 {
     printf("[Exiting...]\n");
@@ -33,11 +36,12 @@ do_setstdin(struct simple_cmd *cmd)
     }
 
     if(file != 0) {
-        res = kanawha_sys_fswap(file, 0);
+        res = kanawha_sys_fmove(file, 0, FMOVE_SWAP);
         if(res) {
             kanawha_sys_close(file);
             return res;
         }
+        kanawha_sys_close(file); // Close the old stdin
     }
     // TODO Check if the old stdin was open, and close it if needed
 
@@ -62,11 +66,12 @@ do_setstdout(struct simple_cmd *cmd)
     }
 
     if(file != 1) {
-        res = kanawha_sys_fswap(file, 1);
+        res = kanawha_sys_fmove(file, 1, FMOVE_SWAP);
         if(res) {
             kanawha_sys_close(file);
             return res;
         }
+        kanawha_sys_close(file); // Close the old stdout
     }
     // TODO Check if the old stdout was open, and close it if needed
 
@@ -91,11 +96,12 @@ do_setstderr(struct simple_cmd *cmd)
     }
 
     if(file != 2) {
-        res = kanawha_sys_fswap(file, 2);
+        res = kanawha_sys_fmove(file, 2, FMOVE_SWAP);
         if(res) {
             kanawha_sys_close(file);
             return res;
         }
+        kanawha_sys_close(file); // Close the old stderr
     }
 
     // TODO Check if the old stderr was open, and close it if needed
@@ -158,6 +164,18 @@ do_cd(struct simple_cmd *cmd)
 }
 
 static int
+do_sleep5(struct simple_cmd *cmd)
+{
+    int res;
+    res = kanawha_sys_sleep(5, SLEEP_DURATION_SEC);
+    if(res) {
+        printf("syscall_sleep: Failed!\n");
+        return res;
+    }
+    return 0;
+}
+
+static int
 do_exec(struct simple_cmd *simple)
 {
     struct cmd_arg *first_arg = simple->args;
@@ -177,6 +195,9 @@ do_exec(struct simple_cmd *simple)
 
     struct cmd *cmd = parse_cmd(simple);
 
+//    printf("Executing Command: ");
+//    dump_cmd(cmd);
+//    printf("\n");
     exec_cmd(cmd);
 
     // We should never return
@@ -236,6 +257,10 @@ static struct directive_handler {
 
 } directive_handlers[] = {
     {
+        .handler = do_help,
+        .directive = "help",
+    },
+    {
         .handler = do_exit,
         .directive = "exit",
     },
@@ -262,6 +287,10 @@ static struct directive_handler {
     {
         .handler = do_cd,
         .directive = "cd",
+    },
+    {
+        .handler = do_sleep5,
+        .directive = "sleep5",
     },
     {
         .handler = do_getenv,
@@ -331,3 +360,18 @@ run_directive(
     return -EINVAL;
 }
 
+static int
+do_help(struct simple_cmd *cmd)
+{
+
+    size_t i = 0;
+    while(1) {
+        struct directive_handler *dir = &directive_handlers[i];
+        if(dir->directive == NULL) {
+            break;
+        }
+        printf("%s ", dir->directive);
+        i++;
+    }
+    return 0;
+}

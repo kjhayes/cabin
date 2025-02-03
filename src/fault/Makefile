@@ -1,0 +1,3 @@
+
+fault-obj += main.o
+

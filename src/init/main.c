@@ -34,7 +34,7 @@ setup_stdstreams(void)
     }
 
     if(_stdin != 0) {
-        res = kanawha_sys_fswap(_stdin, 1);
+        res = kanawha_sys_fmove(_stdin, 0, FMOVE_SWAP);
         if(res) {
             goto err1;
         }
@@ -51,7 +51,7 @@ setup_stdstreams(void)
     }
 
     if(_stdout != 1) {
-        res = kanawha_sys_fswap(_stdout, 2);
+        res = kanawha_sys_fmove(_stdout, 1, FMOVE_SWAP);
         if(res) {
             goto err2;
         }
@@ -68,7 +68,7 @@ setup_stdstreams(void)
     }
 
     if(_stderr != 2) {
-        res = kanawha_sys_fswap(_stderr, 3);
+        res = kanawha_sys_fmove(_stderr, 2, FMOVE_SWAP);
         if(res) {
             goto err2;
         }

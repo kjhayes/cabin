@@ -119,18 +119,13 @@ exec_simple_cmd(struct simple_cmd *cmd)
 
     fd_t exec_file;
 
-    res = kanawha_sys_fswap(0, cmd->stdin);
-    if(res) {
-        goto err;
-    }
-    res = kanawha_sys_fswap(1, cmd->stdout);
-    if(res) {
-        goto err;
-    }
-    res = kanawha_sys_fswap(2, cmd->stderr);
-    if(res) {
-        goto err;
-    }
+    /*
+    printf("exec_simple_cmd(%s, stdin=%p, stdout=%p, stderr=%p)\n",
+            cmd->command,
+            (uintptr_t)cmd->stdin,
+            (uintptr_t)cmd->stdout,
+            (uintptr_t)cmd->stderr);
+            */
 
     res = open_executable(
             cmd->command,
@@ -144,6 +139,28 @@ exec_simple_cmd(struct simple_cmd *cmd)
     if(res) {
         fprintf(stderr, "Could not setup ARGV for command \"%s\"!\n", cmd->command);
         goto err;
+    }
+
+    if(cmd->stdin != 0) {
+        kanawha_sys_close(0);
+        res = kanawha_sys_fmove(0, cmd->stdin, FMOVE_DUP);
+        if(res) {
+            goto err;
+        }
+    }
+    if(cmd->stdout != 1) {
+        kanawha_sys_close(1);
+        res = kanawha_sys_fmove(1, cmd->stdout, FMOVE_DUP);
+        if(res) {
+            goto err;
+        }
+    }
+    if(cmd->stderr != 2) {
+        kanawha_sys_close(2);
+        res = kanawha_sys_fmove(2, cmd->stderr, FMOVE_DUP);
+        if(res) {
+            goto err;
+        }
     }
 
     destroy_simple_cmd(cmd);
@@ -309,26 +326,38 @@ destroy_simple_cmd(struct simple_cmd *cmd)
  * Compound Commands
  */
 
-static void
+void
 dump_cmd(struct cmd *cmd) {
     switch(cmd->type) {
         case CMD_SIMPLE:
-            printf("SIMPLE(%s)", cmd->primary->command);
+            printf("SIMPLE(%s)(in=%p,out=%p,err=%p)", cmd->primary->command,
+                    (uintptr_t)cmd->primary->stdin,
+                    (uintptr_t)cmd->primary->stdout,
+                    (uintptr_t)cmd->primary->stderr);
             break;
         case CMD_SECONDARY_INPUT:
             printf("(");
             dump_cmd(cmd->secondary);
-            printf(" | SIMPLE(%s))", cmd->primary->command);
+            printf(" | SIMPLE(%s)(in=%p,out=%p,err=%p))", cmd->primary->command,
+                    (uintptr_t)cmd->primary->stdin,
+                    (uintptr_t)cmd->primary->stdout,
+                    (uintptr_t)cmd->primary->stderr);
             break;
         case CMD_SECONDARY_AND:
             printf("(");
             dump_cmd(cmd->secondary);
-            printf(" && SIMPLE(%s))", cmd->primary->command);
+            printf(" && SIMPLE(%s)(in=%p,out=%p,err=%p))", cmd->primary->command,
+                    (uintptr_t)cmd->primary->stdin,
+                    (uintptr_t)cmd->primary->stdout,
+                    (uintptr_t)cmd->primary->stderr);
             break;
         case CMD_SECONDARY_OR:
             printf("(");
             dump_cmd(cmd->secondary);
-            printf(" && SIMPLE(%s))", cmd->primary->command);
+            printf(" || SIMPLE(%s)(in=%p,out=%p,err=%p))", cmd->primary->command,
+                    (uintptr_t)cmd->primary->stdin,
+                    (uintptr_t)cmd->primary->stdout,
+                    (uintptr_t)cmd->primary->stderr);
             break;
         default:
             printf("ERROR");
@@ -350,6 +379,7 @@ exec_cmd(struct cmd *cmd)
             cmd->primary = NULL;
             destroy_cmd(cmd);
             return exec_simple_cmd(simple);
+            break;
         case CMD_SECONDARY_INPUT:
             res = fork_cmd(cmd->secondary, &secondary);
             cmd->secondary = NULL;
@@ -366,6 +396,7 @@ exec_cmd(struct cmd *cmd)
             while(kanawha_sys_reap(primary, 0, &primary_exit)) {}
             while(kanawha_sys_reap(secondary, 0, &secondary_exit)) {}
             kanawha_sys_exit(primary_exit);
+            break;
         default:
             destroy_cmd(cmd);
             return -EINVAL;
@@ -385,11 +416,6 @@ fork_cmd(
         struct cmd *cmd,
         pid_t *pid)
 {
-    printf("Forking Command: ");
-    dump_cmd(cmd);
-    printf("\n");
-
-
     int res = create_thread(
             exec_cmd_thread_wrapper,
             (void*)cmd,
@@ -437,8 +463,11 @@ parse_cmd(struct simple_cmd *simple)
             }
             iter->prev = NULL;
 
-            simple->stdout = pipe_fd;
+            fd_t primary_stdout = simple->stdout;
+            fd_t primary_stderr = simple->stderr;
 
+            simple->stdout = pipe_fd;
+            simple->stderr = pipe_fd;
             cmd->secondary = parse_cmd(simple);
 
             struct cmd_arg *primary_args = iter->next;
@@ -461,8 +490,8 @@ parse_cmd(struct simple_cmd *simple)
             memset(primary, 0, sizeof(struct simple_cmd));
 
             primary->stdin = pipe_fd;
-            primary->stdout = 1;
-            primary->stderr = 2;
+            primary->stdout = primary_stdout;
+            primary->stderr = primary_stderr;
 
             primary->command = primary_args->value;
             primary->args = primary_args->next;

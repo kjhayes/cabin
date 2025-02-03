@@ -32,6 +32,10 @@ run_line(const char *raw)
             return 0;
         }
 
+        //printf("Executing Command: ");
+        //dump_cmd(cmd);
+        //printf("\n");
+
         pid_t child;
         res = fork_cmd(cmd, &child);
         if(res) {
@@ -122,7 +126,7 @@ main(int argc, const char **argv)
             }
 
             if(i == EOF) {
-                continue;
+                kanawha_sys_exit(0);
             }
 
             char c = i;
