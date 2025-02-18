@@ -13,6 +13,8 @@ QEMU_FLAGS += -device VGA
 QEMU_FLAGS += -M hpet=on
 QEMU_FLAGS += -smp 2
 QEMU_FLAGS += -device virtio-serial-pci
+QEMU_FLAGS += -device virtio-gpu-pci
+QEMU_FLAGS += -device virtio-rng
 QEMU_FLAGS += -device virtconsole,chardev=chardev1,name=console.0
 QEMU_FLAGS += -accel tcg
 #QEMU_FLAGS += -device edu

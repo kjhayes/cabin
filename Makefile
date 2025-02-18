@@ -4,10 +4,10 @@ export
 default:
 	@
 
-# Set these to the root directories of a compatible version of
-# the Kanawha Kernel and Elk Library Projects
-ELK_ROOT_DIR := ../elk/
-KANAWHA_ROOT_DIR := ../kanawha/
+KANAWHA_OUTPUT_DIR ?= $(ROOT_DIR)/../kanawha/build
+
+CROSS_COMPILE_PREFIX ?= x86_64-kanawha-
+CC := $(CROSS_COMPILE_PREFIX)gcc
 
 # Root directory of Cabin
 ROOT_DIR := $(shell pwd)
@@ -21,42 +21,16 @@ SETUPS_DIR := $(ROOT_DIR)/setups
 OUTPUT_DIR := $(ROOT_DIR)/build
 $(shell mkdir -p $(OUTPUT_DIR))
 
-LIBC_INCLUDE_DIR ?= $(ELK_ROOT_DIR)/include/libc
-POSIX_INCLUDE_DIR ?= $(ELK_ROOT_DIR)/include/posix
-KLIB_INCLUDE_DIR ?= $(ELK_ROOT_DIR)/include/
-
-KANAWHA_INCLUDE_DIR ?= $(KANAWHA_ROOT_DIR)/include
-KANAWHA_OUTPUT_DIR ?= $(KANAWHA_ROOT_DIR)/build
-
-ELK_LIB_DIR := $(ELK_ROOT_DIR)/build
-ELK_LINK_DIR := $(ELK_ROOT_DIR)/link
-LIBC_PATH := $(ELK_LIB_DIR)/libc.o
-KLIB_PATH := $(ELK_LIB_DIR)/klib.o
-CRT0_PATH := $(ELK_LIB_DIR)/crt0.o
-CRTI_PATH := $(ELK_LIB_DIR)/crti.o
-CRTN_PATH := $(ELK_LIB_DIR)/crtn.o
-
 COMMON_FLAGS += \
 				-g \
-				-I $(LIBC_INCLUDE_DIR) \
-				-I $(POSIX_INCLUDE_DIR) \
-				-I $(KLIB_INCLUDE_DIR) \
-				-I $(KANAWHA_INCLUDE_DIR) \
 				-fno-pie \
 				-fno-pic \
-				-nostdlib \
-				-ffreestanding
+				-std=c99
 
 CFLAGS += -O0
 AFLAGS += -D__ASSEMBLER__
 
-PRELINK := $(CRT0_PATH) $(CRTI_PATH)
-POSTLINK := $(LIBC_PATH) $(KLIB_PATH) $(CRTN_PATH)
-
-LDFLAGS += -T $(ELK_LINK_DIR)/link.x64.ld
-
 BINARIES := \
-	init \
 	cat \
 	more \
 	sh \
@@ -66,14 +40,17 @@ BINARIES := \
 	mkdir \
 	cowsay \
 	write \
+	set \
+	sleep \
 	hexdump \
 	insmod \
 	rmmod \
 	xlatekbd \
-	vga-fb-term \
-	vga-splash \
+	fbinfo \
+	fbterm \
 	doomgeneric \
-	fault
+	fault \
+	clear
 
 define binary_build_rules =
 
@@ -86,7 +63,7 @@ $$(OUTPUT_DIR)/$(1)-obj/%.o: $$(SOURCE_DIR)/$(1)/%.c
 
 $(1): $$(OUTPUT_DIR)/$(1)
 $$(OUTPUT_DIR)/$(1): $$(addprefix $$(OUTPUT_DIR)/$(1)-obj/, $$($(1)-obj))
-	$$(LD) $$(LDFLAGS) $$(PRELINK) $$^ $$(POSTLINK) -o $$@
+	$$(CC) $$^ -o $$@ -lkfb
 
 endef
 

@@ -1,7 +1,7 @@
 
 #include <kanawha/sys-wrappers.h>
-#include <kanawha/uapi/dir.h>
-#include <kanawha/uapi/file.h>
+#include <kanawha/dir.h>
+#include <kanawha/file.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>

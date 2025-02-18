@@ -1,0 +1,4 @@
+
+set-obj += \
+	main.o
+

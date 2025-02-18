@@ -1,0 +1,4 @@
+
+fbinfo-obj += \
+	main.o
+

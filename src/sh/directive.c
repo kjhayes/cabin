@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <kanawha/sys-wrappers.h>
-#include <kanawha/uapi/environ.h>
+#include <kanawha/environ.h>
 
 static int
 do_help(struct simple_cmd *cmd);
@@ -36,7 +36,7 @@ do_setstdin(struct simple_cmd *cmd)
     }
 
     if(file != 0) {
-        res = kanawha_sys_fmove(file, 0, FMOVE_SWAP);
+        res = kanawha_sys_fmove(file, 0, FMOVE_SWAP, NULL);
         if(res) {
             kanawha_sys_close(file);
             return res;
@@ -66,7 +66,7 @@ do_setstdout(struct simple_cmd *cmd)
     }
 
     if(file != 1) {
-        res = kanawha_sys_fmove(file, 1, FMOVE_SWAP);
+        res = kanawha_sys_fmove(file, 1, FMOVE_SWAP, NULL);
         if(res) {
             kanawha_sys_close(file);
             return res;
@@ -96,7 +96,7 @@ do_setstderr(struct simple_cmd *cmd)
     }
 
     if(file != 2) {
-        res = kanawha_sys_fmove(file, 2, FMOVE_SWAP);
+        res = kanawha_sys_fmove(file, 2, FMOVE_SWAP, NULL);
         if(res) {
             kanawha_sys_close(file);
             return res;

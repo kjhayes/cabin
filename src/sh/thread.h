@@ -1,12 +1,13 @@
 #ifndef __CABIN_SH__THREAD_H__
 #define __CABIN_SH__THREAD_H__
 
+int
+init_threads(void);
+
 static struct thread_entry_info {
     int(*func)(void *arg);
     void *arg;
 } shared_thread_entry_info;
-
-static int shared_thread_entry_info_lock = 0;
 
 static int
 spin_lock(int *lock)

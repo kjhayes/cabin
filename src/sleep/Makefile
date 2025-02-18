@@ -1,0 +1,4 @@
+
+sleep-obj += \
+	main.o
+

@@ -1,11 +1,18 @@
 
 #define CONFIG_X64
-#include "kanawha/sys-wrappers.h"
-#include "kanawha/uapi/spawn.h"
-#include "kanawha/uapi/process.h"
+#include <kanawha/sys-wrappers.h>
+#include <kanawha/spawn.h>
+#include <kanawha/process.h>
 
 #include "thread.h"
-#include <stdio.h>
+
+static int shared_thread_entry_info_lock = 0;
+
+int
+init_threads(void) {
+    shared_thread_entry_info_lock = 0;
+    return 0;
+}
 
 static int
 thread_entry(void)
@@ -38,12 +45,10 @@ create_thread(
             pid);
 
     if(res) {
-        puts("kanawha_sys_spawn Failed!\n");
-        kanawha_sys_exit(-res);
+        spin_unlock(&shared_thread_entry_info_lock);
+        return res;
     }
 
     return res;
 }
-
-
 

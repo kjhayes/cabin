@@ -1,7 +1,7 @@
 
 #include <kanawha/sys-wrappers.h>
-#include <kanawha/uapi/mount.h>
-#include <kanawha/uapi/file.h>
+#include <kanawha/mount.h>
+#include <kanawha/file.h>
 #include <stdio.h>
 
 int main(int argc, const char **argv) {

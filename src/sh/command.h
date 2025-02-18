@@ -2,8 +2,8 @@
 #define __CABIN_SH__COMMAND_H__
 
 #define CONFIG_X64
-#include <kanawha/uapi/file.h>
-#include <kanawha/uapi/process.h>
+#include <kanawha/file.h>
+#include <kanawha/process.h>
 
 struct cmd_arg {
     struct cmd_arg *next;

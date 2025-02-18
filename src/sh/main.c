@@ -1,7 +1,8 @@
 
-#include "kanawha/sys-wrappers.h"
+#include <kanawha/sys-wrappers.h>
 #include "command.h"
 #include "directive.h"
+#include "thread.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -50,6 +51,13 @@ run_line(const char *raw)
 int
 main(int argc, const char **argv)
 {
+    int res;
+    res = init_threads();
+    if(res) {
+        fprintf(stderr, "Failed to initialize threads!\n");
+        exit(EXIT_FAILURE);
+    }
+
     int running = 1;
 
 #define BUFLEN 0x4000

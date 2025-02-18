@@ -1,7 +1,7 @@
 
 #include <stdio.h>
 
-#include <kanawha/uapi/kbd.h>
+#include <kanawha/kbd.h>
 
 const char *progname = "kbdxlate";
 

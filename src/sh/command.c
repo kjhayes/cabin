@@ -1,7 +1,7 @@
 
-#include "kanawha/sys-wrappers.h"
-#include "kanawha/uapi/process.h"
-#include "kanawha/uapi/environ.h"
+#include <kanawha/sys-wrappers.h>
+#include <kanawha/process.h>
+#include <kanawha/environ.h>
 #include "command.h"
 #include "thread.h"
 
@@ -143,21 +143,21 @@ exec_simple_cmd(struct simple_cmd *cmd)
 
     if(cmd->stdin != 0) {
         kanawha_sys_close(0);
-        res = kanawha_sys_fmove(0, cmd->stdin, FMOVE_DUP);
+        res = kanawha_sys_fmove(0, cmd->stdin, FMOVE_DUP, NULL);
         if(res) {
             goto err;
         }
     }
     if(cmd->stdout != 1) {
         kanawha_sys_close(1);
-        res = kanawha_sys_fmove(1, cmd->stdout, FMOVE_DUP);
+        res = kanawha_sys_fmove(1, cmd->stdout, FMOVE_DUP, NULL);
         if(res) {
             goto err;
         }
     }
     if(cmd->stderr != 2) {
         kanawha_sys_close(2);
-        res = kanawha_sys_fmove(2, cmd->stderr, FMOVE_DUP);
+        res = kanawha_sys_fmove(2, cmd->stderr, FMOVE_DUP, NULL);
         if(res) {
             goto err;
         }
