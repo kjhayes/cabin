@@ -43,7 +43,7 @@ run_line(const char *raw)
             return res;
         }
         int exitcode;
-        while(kanawha_sys_reap(child, 0, &exitcode)) {}
+        while(kanawha_sys_reap(0, &child, &exitcode)) {}
         return 0;
     }
 }

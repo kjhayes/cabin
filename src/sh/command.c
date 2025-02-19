@@ -393,8 +393,8 @@ exec_cmd(struct cmd *cmd)
                 destroy_cmd(cmd);
                 return res;
             }
-            while(kanawha_sys_reap(primary, 0, &primary_exit)) {}
-            while(kanawha_sys_reap(secondary, 0, &secondary_exit)) {}
+            while(kanawha_sys_reap(0, &primary, &primary_exit)) {}
+            while(kanawha_sys_reap(0, &secondary, &secondary_exit)) {}
             kanawha_sys_exit(primary_exit);
             break;
         default:

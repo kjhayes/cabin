@@ -157,7 +157,7 @@ int main(int argc, const char **argv)
             layer);
 
     int input_thread_ret;
-    while(kanawha_sys_reap(input_thread_pid, 0, &input_thread_ret)) {}
+    while(kanawha_sys_reap(0, &input_thread_pid, &input_thread_ret)) {}
 
     deinit_terminal();
     unload_font(fdata);
