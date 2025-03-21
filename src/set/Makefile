@@ -1,4 +1,4 @@
 
-set-obj += \
+obj-y += \
 	main.o
 

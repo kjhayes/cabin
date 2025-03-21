@@ -1,4 +1,4 @@
 
-rmmod-obj += \
+obj-y += \
 	main.o
 

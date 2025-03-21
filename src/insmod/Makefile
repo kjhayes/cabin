@@ -1,4 +1,4 @@
 
-insmod-obj += \
+obj-y += \
 	main.o
 

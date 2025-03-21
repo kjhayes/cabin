@@ -1,3 +1,3 @@
 
-cat-obj += main.o
+obj-y += main.o
 

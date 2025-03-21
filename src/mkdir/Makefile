@@ -1,4 +1,4 @@
 
-mkdir-obj += \
+obj-y += \
 	main.o
 

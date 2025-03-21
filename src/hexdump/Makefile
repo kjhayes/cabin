@@ -1,4 +1,4 @@
 
-hexdump-obj += \
+obj-y += \
 	main.o
 

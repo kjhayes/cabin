@@ -8,6 +8,8 @@
 
 static int shared_thread_entry_info_lock = 0;
 
+struct thread_entry_info shared_thread_entry_info;
+
 int
 init_threads(void) {
     shared_thread_entry_info_lock = 0;

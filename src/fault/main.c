@@ -1,12 +1,37 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <kanawha/sys-wrappers.h>
+#include <kanawha/sleep.h>
 
 int main(int argc, const char **argv)
 {
-    printf("Touching invalid pointer\n");
-    volatile uint64_t *touch = (void*)0xCAFEBABECAFEBABEULL;
-    volatile uint64_t value = *touch;
-    printf("Survived?????\n");
+    int res;
+
+    pid_t pid = fork();
+
+    if(pid == 0) {
+
+        // Child
+        printf("Hello From Child! pid=%lld\n", (long long)kanawha_sys_getpid());
+
+        char * argv[] = {
+            "cat",
+            "/sys/initrd/hello.txt",
+            0,
+        };
+        execvp("cat", argv);
+        perror("execvp");
+        return -1;
+
+    } else {
+        printf("Hello From Parent! pid=%lld, child_pid=%d\n", (long long)kanawha_sys_getpid(), pid);
+        // Parent
+        wait(NULL);
+        printf("Waited on Child!\n");
+    }
     return 0;
 }

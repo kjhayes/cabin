@@ -1,34 +1,86 @@
 
 export
 
+ROOT_DIR := $(shell pwd)
+SCRIPTS_DIR := $(ROOT_DIR)/scripts
+MK_SCRIPTS_DIR := $(SCRIPTS_DIR)/make
+SOURCE_REL_DIR := src
+SOURCE_DIR := $(ROOT_DIR)/$(SOURCE_REL_DIR)
+
+KANAWHA_OUTPUT_DIR := ../kanawha/build/
+
+OUTPUT_DIR := $(ROOT_DIR)/build/
+
+SETUPS_DIR := $(ROOT_DIR)/setups
+
+PYTHON := python3
+
+CFLAGS += -g
+
 default:
 	@
 
-KANAWHA_OUTPUT_DIR ?= $(ROOT_DIR)/../kanawha/build
+include $(MK_SCRIPTS_DIR)/include.mk
+include $(MK_SCRIPTS_DIR)/config.mk
 
-CROSS_COMPILE_PREFIX ?= x86_64-kanawha-
-CC := $(CROSS_COMPILE_PREFIX)gcc
+ifeq ($(findstring config,$(MAKECMDGOALS)),config)
+# Don't try to do anything if the goal includes the substring "config"
+else
+ifndef CONFIG_CABIN
 
-# Root directory of Cabin
-ROOT_DIR := $(shell pwd)
+default: missing_config_message
 
-SOURCE_DIR := $(ROOT_DIR)/src
-SCRIPTS_DIR := $(ROOT_DIR)/scripts
-SETUPS_DIR := $(ROOT_DIR)/setups
+missing_config_message: FORCE
+	@echo Could Not Find .config File! Run "make menuconfig" or "make defconfig"!
 
-# All output files should end up in this directory
-# IMPORTANT SAFETY NOTE: "make clean" simply deletes this directory
-OUTPUT_DIR := $(ROOT_DIR)/build
-$(shell mkdir -p $(OUTPUT_DIR))
+else
+
+ifdef CONFIG_X64
+	ARCH := x64
+endif
+ifdef CONFIG_RISCV64
+	ARCH := riscv64
+endif
+
+ifdef ARCH
+-include $(SCRIPTS_DIR)/arch/$(ARCH)/arch.mk
+else
+	$(error "No Architecture Specified!")
+endif
+
+ifdef CONFIG_CLANG
+	TOOLCHAIN := clang
+endif
+ifdef CONFIG_GCC
+	TOOLCHAIN := gcc
+endif
+
+ifdef TOOLCHAIN
+-include $(SCRIPTS_DIR)/toolchain/$(TOOLCHAIN)/toolchain.mk
+else
+	$(error "No Toolchain Specified!")
+endif
+
+$(OUTPUT_DIR): FORCE
+	$(Q)mkdir -p $@
 
 COMMON_FLAGS += \
 				-g \
+				-include $(AUTOCONF) \
+				$(subst ",,$(CONFIG_OPT_FLAGS)) \
 				-fno-pie \
 				-fno-pic \
-				-std=c99
 
-CFLAGS += -O0
+EXTRA_LIBS += \
+			-lkfb
+
+COMMON_DEPS += $(AUTOCONF)
 AFLAGS += -D__ASSEMBLER__
+CFLAGS += -std=c99
+
+ifdef CONFIG_DEBUG_SYMBOLS
+COMMON_FLAGS += -g
+endif
 
 BINARIES := \
 	cat \
@@ -54,16 +106,14 @@ BINARIES := \
 
 define binary_build_rules =
 
--include $$(SOURCE_DIR)/$(1)/Makefile
-
-$$(shell mkdir -p $$(OUTPUT_DIR)/$(1)-obj)
-
-$$(OUTPUT_DIR)/$(1)-obj/%.o: $$(SOURCE_DIR)/$(1)/%.c
-	$$(CC) $$(CFLAGS) $$(COMMON_FLAGS) -c $$< -o $$@
-
+# Final Link Rule
 $(1): $$(OUTPUT_DIR)/$(1)
-$$(OUTPUT_DIR)/$(1): $$(addprefix $$(OUTPUT_DIR)/$(1)-obj/, $$($(1)-obj))
-	$$(CC) $$^ -o $$@ -lkfb
+$$(OUTPUT_DIR)/$(1): $$(OUTPUT_DIR)/$$(SOURCE_REL_DIR)/$(1)/obj.o
+	$(Q)$(CC) $(CFLAGS) $(COMMON_FLAGS) $$< -o $$@ $(EXTRA_LIBS)
+
+# Object Compile Rule
+$$(OUTPUT_DIR)/$$(SOURCE_REL_DIR)/$(1)/obj.o: $$(AUTOCONF) FORCE
+	$(Q)$(MAKE) -C $$(SOURCE_DIR)/$(1) -f $$(MK_SCRIPTS_DIR)/build.mk obj
 
 endef
 
@@ -71,12 +121,16 @@ $(foreach BINARY,$(BINARIES),$(eval $(call binary_build_rules,$(BINARY))))
 
 default: $(BINARIES)
 
+-include $(MK_SCRIPTS_DIR)/qemu.mk
+-include $(MK_SCRIPTS_DIR)/initrd.mk
+-include $(MK_SCRIPTS_DIR)/isoimage.mk
+
 clean: FORCE
-	rm -rf $(OUTPUT_DIR)
+	$(Q)find $(OUTPUT_DIR) -name "*.o" -delete $(QPIPE) $(QIGNORE)
+	$(Q)find $(OUTPUT_DIR) -name "*.d" -delete $(QPIPE) $(QIGNORE)
+	$(Q)rm $(AUTOCONF) $(QPIPE) $(QIGNORE)
+	$(Q)rm -r $(OUTPUT_DIR) $(QPIPE) $(QIGNORE)
 
-include $(SCRIPTS_DIR)/qemu.mk
-include $(SCRIPTS_DIR)/initrd.mk
-include $(SCRIPTS_DIR)/isoimage.mk
-
-FORCE:
+endif
+endif
 

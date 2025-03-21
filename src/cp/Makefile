@@ -1,4 +1,4 @@
 
-cp-obj += \
+obj-y += \
 	main.o
 

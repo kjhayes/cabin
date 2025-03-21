@@ -1,0 +1,32 @@
+
+choice
+  prompt "Architecture"
+  default X64
+  config X64
+    bool "x86_64"
+  config RISCV64
+    bool "RISCV64"
+endchoice
+
+choice
+  prompt "Toolchain"
+  default GCC
+  config GCC
+    bool "GCC"
+endchoice
+
+config GCC_CROSS_COMPILE_PREFIX
+    string "GCC Cross Compiler Prefix"
+    default ""
+    depends on GCC
+
+config OPT_FLAGS
+  string "Compiler Optimization Flags"
+  default -O3
+  help
+    Optimization flags to pass to the compiler
+
+# Used to check that a .config exists
+config CABIN
+    def_bool y
+

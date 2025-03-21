@@ -190,7 +190,9 @@ do_exec(struct simple_cmd *simple)
 
     simple->command = first_arg->value;
     simple->args = first_arg->next;
-    simple->args->prev = NULL;
+    if(simple->args) {
+        simple->args->prev = NULL;
+    }
     free(first_arg);
 
     struct cmd *cmd = parse_cmd(simple);
@@ -200,8 +202,8 @@ do_exec(struct simple_cmd *simple)
 //    printf("\n");
     exec_cmd(cmd);
 
-    // We should never return
-    return -1;
+    // We should never return (exit if we do)
+    exit(-1);
 }
 
 static int

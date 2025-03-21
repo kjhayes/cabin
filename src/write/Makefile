@@ -1,4 +1,4 @@
 
-write-obj += \
+obj-y += \
 	main.o
 

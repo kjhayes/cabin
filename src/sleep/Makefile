@@ -1,4 +1,4 @@
 
-sleep-obj += \
+obj-y += \
 	main.o
 

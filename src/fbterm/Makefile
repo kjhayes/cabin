@@ -1,5 +1,5 @@
 
-fbterm-obj += \
+obj-y += \
 	main.o \
 	term.o \
 	font.o \

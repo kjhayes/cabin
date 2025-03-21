@@ -1,3 +1,3 @@
 
-fault-obj += main.o
+obj-y += main.o
 

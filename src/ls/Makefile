@@ -1,4 +1,4 @@
 
-ls-obj += \
+obj-y += \
 	main.o
 

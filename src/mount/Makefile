@@ -1,4 +1,4 @@
 
-mount-obj += \
+obj-y += \
 	main.o
 

@@ -1,4 +1,4 @@
 
-xlatekbd-obj += \
+obj-y += \
 	main.o
 

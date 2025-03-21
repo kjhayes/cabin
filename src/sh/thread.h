@@ -4,10 +4,12 @@
 int
 init_threads(void);
 
-static struct thread_entry_info {
+struct thread_entry_info {
     int(*func)(void *arg);
     void *arg;
-} shared_thread_entry_info;
+};
+
+extern struct thread_entry_info shared_thread_entry_info;
 
 static int
 spin_lock(int *lock)
