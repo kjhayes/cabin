@@ -6,13 +6,18 @@
 #include <stdint.h>
 #include "kanawha/kfb.h"
 
+struct glyph_data {
+    struct kfb_image *fg;
+    struct kfb_image *bg;
+};
+
 struct font_data
 {
     size_t width;
     size_t height;
     size_t error_glyph;
     size_t num_glyphs;
-    struct kfb_image **glyphs;
+    struct glyph_data *glyphs;
 };
 
 struct font_data *

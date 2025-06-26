@@ -56,7 +56,7 @@ int main(int argc, const char **argv)
 
     uint8_t buf;
     int bytes_cur_line = 0;
-    int bytes_per_line = 8;
+    int bytes_per_line = 16;
 
     while(1)
     {

@@ -10,6 +10,7 @@ handle_kbd_event(
         struct kbd_event *evt)
 {
     static int shift_pressed = 0;
+    static int ctrl_pressed = 0;
 
     kbd_key_t key = evt->key;
     kbd_motion_t motion = evt->motion;
@@ -19,17 +20,64 @@ handle_kbd_event(
             case KBD_KEY_LSHIFT:
                 shift_pressed = 0;
                 break;
+            case KBD_KEY_LCTRL:
+                ctrl_pressed = 0;
+                break;
             default:
                 break;
         }
     } else {
 
         int no_char = 0;
+        int ctrl_char = 0;
         char c;
         switch(key) {
+            case KBD_KEY_LCTRL:
+                ctrl_pressed = 1;
+                ctrl_char = 1;
+                return;
             case KBD_KEY_LSHIFT:
                 shift_pressed = 1;
+                ctrl_char = 1;
+                return;
+            default:
                 break;
+        }
+
+        if(ctrl_pressed) {
+            switch(key) {
+            case KBD_KEY_A: c = 0x01; break; // ^A Start of Heading
+            case KBD_KEY_B: c = 0x02; break; // ^B Start of Text
+            case KBD_KEY_C: c = 0x03; break; // ^C End of Text
+            case KBD_KEY_D: c = 0x04; break; // ^D End of Transmission
+            case KBD_KEY_E: c = 0x05; break;
+            case KBD_KEY_F: c = 0x06; break;
+            case KBD_KEY_G: c = 0x07; break; // Bel
+            case KBD_KEY_H: c = 0x08; break; // Backspace
+            case KBD_KEY_I: c = 0x09; break; // Tab
+            case KBD_KEY_J: c = 0x0A; break; // LF
+            case KBD_KEY_K: c = 0x0B; break; // VT
+            case KBD_KEY_L: c = 0x0C; break; // FF
+            case KBD_KEY_M: c = 0x0D; break; // CR
+            case KBD_KEY_N: c = 0x0E; break; // Shift Out
+            case KBD_KEY_O: c = 0x0F; break; // Shift In
+            case KBD_KEY_P: c = 0x10; break;
+            case KBD_KEY_Q: c = 0x11; break;
+            case KBD_KEY_R: c = 0x12; break;
+            case KBD_KEY_S: c = 0x13; break;
+            case KBD_KEY_T: c = 0x14; break;
+            case KBD_KEY_U: c = 0x15; break;
+            case KBD_KEY_V: c = 0x16; break;
+            case KBD_KEY_W: c = 0x17; break;
+            case KBD_KEY_X: c = 0x18; break;
+            case KBD_KEY_Y: c = 0x19; break;
+            case KBD_KEY_Z: c = 0x1A; break;
+            case KBD_KEY_OPEN_SQR: c = 0x1B; break; // ESC
+            case KBD_KEY_BSLASH: c = 0x1C; break; // File Sep.
+            default: no_char = 1; break;
+            }
+        } else {
+            switch(key) {
             case KBD_KEY_A: c = shift_pressed ? 'A' : 'a'; break;
             case KBD_KEY_B: c = shift_pressed ? 'B' : 'b'; break;
             case KBD_KEY_C: c = shift_pressed ? 'C' : 'c'; break;
@@ -81,15 +129,17 @@ handle_kbd_event(
             case KBD_KEY_TAB: c = '\t'; break;
             case KBD_KEY_ENTER: c = '\n'; break;
             case KBD_KEY_BACKSPACE: c = '\b'; break;
-            default:
-                no_char = 1;
-                break;
+            case KBD_KEY_ESCAPE: c = 033; break;
+            default: no_char = 1; break;
+            }
         }
 
-        if(!no_char) {
+        if(!no_char && !ctrl_char) {
             putchar(c);
-        } else {
+        } else if(no_char) {
             putchar('?');
+        } else { // ctrl_char
+            // Do nothing
         }
     }
 }

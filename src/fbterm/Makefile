@@ -4,4 +4,5 @@ obj-y += \
 	term.o \
 	font.o \
 	render.o \
+	ansi.o \
 

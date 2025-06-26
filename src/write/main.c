@@ -28,7 +28,7 @@ main(int argc, const char **argv)
     const char *path = NULL;
 
     int opt;
-    while((opt = getopt(argc, argv, "oarf:n:")) != -1) {
+    while((opt = getopt(argc, (char **)argv, "oarf:n:")) != -1) {
         switch(opt) {
             case 'o':
                 append = 1;

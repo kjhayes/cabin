@@ -60,4 +60,12 @@ compile_commands.json
 # Log Files from running the kernel in a VM
 *.log
 
+.config
+
+*.img
+*.img.old
+
+*.term
+
+asm
 

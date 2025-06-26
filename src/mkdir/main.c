@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <kanawha/sys-wrappers.h>
+#include <kanawha/file.h>
 
 int
 main(int argc, const char **argv)
@@ -49,6 +50,18 @@ main(int argc, const char **argv)
             0);
     if(res) {
         fprintf(stderr, "Failed to create directory \"%s\"!\n", path);
+        return -1;
+    }
+
+    res = kanawha_sys_flush(dir, 0);
+    if(res) {
+        fprintf(stderr, "Failed to flush parent directory!\n");
+        return -1;
+    }
+
+    res = kanawha_sys_close(dir);
+    if(res) {
+        fprintf(stderr, "Failed to close parent directory!\n");
         return -1;
     }
 

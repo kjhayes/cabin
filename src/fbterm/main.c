@@ -13,6 +13,7 @@
 #include "render.h"
 #include "term.h"
 #include "font.h"
+#include "ansi.h"
 
 static const char *prog_name = "fbterm";
 
@@ -65,7 +66,7 @@ find_maximum_fb_mode(
 
 static inline void
 panic_usage(void) {
-    fprintf(stderr, "Usage: %s [-f framebuffer] [-t psf1-font] [-m mode] [-l layer]\n",
+    fprintf(stderr, "Usage: %s [-f framebuffer] [-t psf1-font] [-m mode] [-l layer] [-d log_file]\n",
             prog_name);
     exit(EXIT_FAILURE);
 }
@@ -78,16 +79,22 @@ int main(int argc, const char **argv)
         prog_name = argv[0];
     }
 
+    FILE *log_file = NULL;
+    const char *log_file_path = NULL;
+
     const char *font_path = NULL;
     const char *fb_path = NULL;
     int mode = 0;
     int layer = 0;
 
     int opt;
-    while((opt = getopt(argc, argv, "f:t:m:l:")) != -1) {
+    while((opt = getopt(argc, (char**)argv, "f:t:m:l:d:")) != -1) {
         switch(opt) {
             case 'f':
                 fb_path = optarg;
+                break;
+            case 'd':
+                log_file_path = optarg;
                 break;
             case 't':
                 font_path = optarg;
@@ -105,6 +112,10 @@ int main(int argc, const char **argv)
 
     if(font_path == NULL || fb_path == NULL) {
         panic_usage();
+    }
+
+    if(log_file_path != NULL) {
+        log_file = fopen(log_file_path, "w");
     }
 
     struct font_data *fdata = load_font(font_path);
@@ -129,10 +140,10 @@ int main(int argc, const char **argv)
         exit(EXIT_FAILURE);
     }
 
-#define TERM_WIDTH  100
-#define TERM_HEIGHT 40
+#define TERM_WIDTH  80
+#define TERM_HEIGHT 24
 
-    res = init_terminal(stdin, TERM_WIDTH, TERM_HEIGHT);
+    res = init_terminal(stdin, log_file, TERM_WIDTH, TERM_HEIGHT);
     if(res) {
         fprintf(stderr, "Failed to allocate terminal buffer!\n");
         exit(EXIT_FAILURE);
@@ -142,7 +153,7 @@ int main(int argc, const char **argv)
     extern void _thread_start(void);
     res = kanawha_sys_spawn(
             _thread_start,
-            (void*)run_terminal,
+            (void*)run_ansi_terminal,
             SPAWN_MMAP_SHARED|SPAWN_ENV_CLONE|SPAWN_FILES_CLONE,
             &input_thread_pid);
     if(res) {

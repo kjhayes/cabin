@@ -5,112 +5,96 @@
 #include "command.h"
 #include "thread.h"
 
+#include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
 #include <ctype.h>
 #include <string.h>
 
-static int
-open_executable(
-        const char *exec_path,
-        fd_t *fd)
-{
-    int res;
-
-    size_t pathlen = strlen(exec_path);
-
-#define ENV_PATHLEN 0x100
-    char path_buf[ENV_PATHLEN + pathlen + 1];
-    res = kanawha_sys_environ(
-            "PATH",
-            path_buf,
-            ENV_PATHLEN,
-            ENV_GET);
-    size_t env_pathlen = 0;
-    if(res == 0) {
-        path_buf[ENV_PATHLEN] = '\0';
-        env_pathlen = strlen(path_buf);
-    }
-#undef ENV_PATHLEN 
-
-    strcpy(path_buf + env_pathlen, exec_path);
-
-    res = kanawha_sys_open(
-                path_buf,
-                FILE_PERM_EXEC|FILE_PERM_READ,
-                0,
-                fd);
-    if(res) {
-        return res;
-    }
-
-    return 0;
-}
+//static int
+//open_executable(
+//        const char *exec_path,
+//        fd_t *fd)
+//{
+//    int res;
+//
+//    size_t pathlen = strlen(exec_path);
+//
+//#define ENV_PATHLEN 0x100
+//    char path_buf[ENV_PATHLEN + pathlen + 1];
+//    res = kanawha_sys_environ(
+//            "PATH",
+//            path_buf,
+//            ENV_PATHLEN,
+//            ENV_GET);
+//    size_t env_pathlen = 0;
+//    if(res == 0) {
+//        path_buf[ENV_PATHLEN] = '\0';
+//        env_pathlen = strlen(path_buf);
+//    }
+//#undef ENV_PATHLEN 
+//
+//    strcpy(path_buf + env_pathlen, exec_path);
+//
+//    res = kanawha_sys_open(
+//                path_buf,
+//                FILE_PERM_EXEC|FILE_PERM_READ,
+//                0,
+//                fd);
+//    if(res) {
+//        return res;
+//    }
+//
+//    return 0;
+//}
 
 // Setup the ARGV environment variable with the provided argc and argv,
 // ignoring any NULL entries in "argv"
-static int
-setup_argv_env(
-    struct simple_cmd *cmd)
-{
-    int res;
-
-    // Determine the value of "argc" and how much data we will need to store ARGV
-    // (Include the simple_cmd itself in ARGV)
-    int argc = 1;
-    size_t argv_data_len = strlen(cmd->command) + 1;
-
-    for(struct cmd_arg *iter = cmd->args;
-            iter != NULL;
-            iter = iter->next)
-    {
-        if(iter->value == NULL) {
-            // Need to evaluate the argument
-            continue;
-        }
-        argv_data_len += (1 + strlen(iter->value));
-        argc++;
-    }
-
-
-    char *argv_data = malloc(argv_data_len);
-    if(argv_data == NULL) {
-        return -ENOMEM;
-    }
-
-    char *argv_data_iter = argv_data;
-
-    // Layout the "ARGV" environment variable
-    {
-        size_t cmd_len = strlen(cmd->command);
-        memcpy(argv_data_iter, cmd->command, cmd_len);
-        argv_data_iter[cmd_len] = ' ';
-        argv_data_iter += (cmd_len + 1);
-    }
-    for(struct cmd_arg *iter = cmd->args;
-            iter != NULL;
-            iter = iter->next)
-    {
-        if(iter->value == NULL) {
-            continue;
-        }
-        size_t arglen = strlen(iter->value);
-        memcpy(argv_data_iter, iter->value, arglen);
-        argv_data_iter[arglen] = ' ';
-        argv_data_iter += (1 + arglen);
-    }
-
-    // Set ARGV
-    res = kanawha_sys_environ("ARGV", argv_data, argv_data_len, ENV_SET);
-    if(res) {
-        free(argv_data);
-        return res;
-    }
-
-    free(argv_data);
-    return 0;
-}
+//static int
+//setup_argv_env(
+//    struct simple_cmd *cmd)
+//{
+//    int res;
+//
+//
+//    char *argv_data = malloc(argv_data_len);
+//    if(argv_data == NULL) {
+//        return -ENOMEM;
+//    }
+//
+//    char *argv_data_iter = argv_data;
+//
+//    // Layout the "ARGV" environment variable
+//    {
+//        size_t cmd_len = strlen(cmd->command);
+//        memcpy(argv_data_iter, cmd->command, cmd_len);
+//        argv_data_iter[cmd_len] = ' ';
+//        argv_data_iter += (cmd_len + 1);
+//    }
+//    for(struct cmd_arg *iter = cmd->args;
+//            iter != NULL;
+//            iter = iter->next)
+//    {
+//        if(iter->value == NULL) {
+//            continue;
+//        }
+//        size_t arglen = strlen(iter->value);
+//        memcpy(argv_data_iter, iter->value, arglen);
+//        argv_data_iter[arglen] = ' ';
+//        argv_data_iter += (1 + arglen);
+//    }
+//
+//    // Set ARGV
+//    res = kanawha_sys_environ("ARGV", argv_data, argv_data_len, ENV_SET);
+//    if(res) {
+//        free(argv_data);
+//        return res;
+//    }
+//
+//    free(argv_data);
+//    return 0;
+//}
 
 static int
 exec_simple_cmd(struct simple_cmd *cmd) 
@@ -127,19 +111,39 @@ exec_simple_cmd(struct simple_cmd *cmd)
             (uintptr_t)cmd->stderr);
             */
 
-    res = open_executable(
-            cmd->command,
-            &exec_file);
-    if(res) {
-        fprintf(stderr, "Could not find command \"%s\"!\n", cmd->command);
-        goto err;
+    // Determine the value of "argc" and how much data we will need to store ARGV
+    // (Include the simple_cmd itself in ARGV)
+    int argc = 1;
+
+    for(struct cmd_arg *iter = cmd->args;
+            iter != NULL;
+            iter = iter->next)
+    {
+        if(iter->value == NULL) {
+            // Need to evaluate the argument
+            continue;
+        }
+        argc++;
     }
 
-    res = setup_argv_env(cmd);
-    if(res) {
-        fprintf(stderr, "Could not setup ARGV for command \"%s\"!\n", cmd->command);
-        goto err;
+    const char *argv[argc+1];
+    memset(argv, 0, sizeof(argv));
+    argv[0] = cmd->command;
+
+    size_t argv_index = 1;
+    for(struct cmd_arg *iter = cmd->args;
+            iter != NULL;
+            iter = iter->next)
+    {
+        if(iter->value == NULL) {
+            // Need to evaluate the argument
+            continue;
+        }
+        argv[argv_index] = iter->value;
+        argv_index++;
     }
+
+    argv[argc] = NULL;
 
     if(cmd->stdin != 0) {
         kanawha_sys_close(0);
@@ -163,12 +167,12 @@ exec_simple_cmd(struct simple_cmd *cmd)
         }
     }
 
-    destroy_simple_cmd(cmd);
-    cmd = NULL;
+    // We leak argv here.
 
-    res = kanawha_sys_exec(
-            exec_file,
-            0);
+    res = execvp(
+            cmd->command,
+            (char * const *)argv
+            );
     if(res) {
         goto err;
     }
@@ -177,9 +181,12 @@ exec_simple_cmd(struct simple_cmd *cmd)
     return -EINVAL;
 
 err:
+    fprintf(stderr, "Failed to find command: \"%s\"\n",
+            cmd->command);
     if(cmd) {
         destroy_simple_cmd(cmd);
     }
+
     return res;
 }
 

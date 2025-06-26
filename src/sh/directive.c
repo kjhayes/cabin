@@ -155,6 +155,7 @@ do_cd(struct simple_cmd *cmd)
 
     res = kanawha_sys_chwdir(file);
     if(res) {
+        fprintf(stderr, "No such file or directory \"%s\"\n", path);
         return res;
     }
 
@@ -164,15 +165,13 @@ do_cd(struct simple_cmd *cmd)
 }
 
 static int
-do_sleep5(struct simple_cmd *cmd)
+do_echo(struct simple_cmd *cmd)
 {
-    int res;
-    res = kanawha_sys_sleep(5, SLEEP_DURATION_SEC);
-    if(res) {
-        printf("syscall_sleep: Failed!\n");
-        return res;
+    struct cmd_arg *arg = cmd->args;
+    while(arg != NULL) {
+        printf("%s ", arg->value);
+        arg = arg->next;
     }
-    return 0;
 }
 
 static int
@@ -290,10 +289,10 @@ static struct directive_handler {
         .handler = do_cd,
         .directive = "cd",
     },
-    {
-        .handler = do_sleep5,
-        .directive = "sleep5",
-    },
+//    {
+//        .handler = do_echo,
+//        .directive = "echo",
+//    },
     {
         .handler = do_getenv,
         .directive = "getenv",

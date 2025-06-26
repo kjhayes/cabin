@@ -72,7 +72,8 @@ COMMON_FLAGS += \
 				-fno-pic \
 
 EXTRA_LIBS += \
-			-lkfb
+			-lkfb \
+			-lncurses_g \
 
 COMMON_DEPS += $(AUTOCONF)
 AFLAGS += -D__ASSEMBLER__
@@ -83,18 +84,16 @@ COMMON_FLAGS += -g
 endif
 
 BINARIES := \
-	cat \
 	more \
 	sh \
+	ksh \
 	cp \
-	ls \
+	rm \
 	mount \
 	mkdir \
 	cowsay \
 	write \
 	set \
-	sleep \
-	hexdump \
 	insmod \
 	rmmod \
 	xlatekbd \
@@ -102,7 +101,11 @@ BINARIES := \
 	fbterm \
 	doomgeneric \
 	fault \
-	clear
+	lspci \
+	lsacpi \
+	dumpenv \
+	testdir \
+	disptga \
 
 define binary_build_rules =
 
@@ -124,6 +127,7 @@ default: $(BINARIES)
 -include $(MK_SCRIPTS_DIR)/qemu.mk
 -include $(MK_SCRIPTS_DIR)/initrd.mk
 -include $(MK_SCRIPTS_DIR)/isoimage.mk
+-include $(MK_SCRIPTS_DIR)/uimage.mk
 
 clean: FORCE
 	$(Q)find $(OUTPUT_DIR) -name "*.o" -delete $(QPIPE) $(QIGNORE)

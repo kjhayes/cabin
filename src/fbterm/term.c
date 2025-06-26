@@ -10,6 +10,7 @@ struct terminal_data terminal_data = { 0 };
 int
 init_terminal(
         FILE *input_file,
+        FILE *log_file,
         size_t width,
         size_t height)
 {
@@ -18,6 +19,7 @@ init_terminal(
 
     tdata->width = width;
     tdata->height = height;
+    tdata->log_file = log_file;
 
     tdata->redraw_buffer = malloc(width*height*sizeof(unsigned char));
     if(tdata->redraw_buffer == NULL) {
@@ -38,14 +40,25 @@ init_terminal(
         free(tdata->redraw_buffer);
         return -EINVAL;
     }
-    memset(tdata->fg_color_buffer, 0xFF, width*height*sizeof(color_t));
-
     tdata->bg_color_buffer = malloc(width*height*sizeof(color_t));
     if(tdata->bg_color_buffer == NULL) {
         free(tdata->fg_color_buffer);
         free(tdata->character_buffer);
         free(tdata->redraw_buffer);
         return -EINVAL;
+    }
+    for(size_t y = 0; y < height; y++) {
+        for(size_t x = 0; x < width; x++) {
+            tdata->fg_color_buffer[x + (y*width)].r = 0xFF;
+            tdata->fg_color_buffer[x + (y*width)].g = 0xFF;
+            tdata->fg_color_buffer[x + (y*width)].b = 0xFF;
+            tdata->fg_color_buffer[x + (y*width)].a = 0xFF;
+
+            tdata->bg_color_buffer[x + (y*width)].r = 0x00;
+            tdata->bg_color_buffer[x + (y*width)].g = 0x00;
+            tdata->bg_color_buffer[x + (y*width)].b = 0x00;
+            tdata->bg_color_buffer[x + (y*width)].a = 0xFF;
+        }
     }
     memset(tdata->bg_color_buffer, 0x00, width*height*sizeof(color_t));
 
@@ -60,7 +73,11 @@ init_terminal(
     tdata->cur_bg_color.r = 0x00;
     tdata->cur_bg_color.g = 0x00;
     tdata->cur_bg_color.b = 0x00;
-    tdata->cur_bg_color.a = 0x00;
+    tdata->cur_bg_color.a = 0xFF;
+    tdata->cur_bold = 0;
+    tdata->cur_italic = 0;
+    tdata->cur_underline = 0;
+    tdata->last_character = ' ';
     tdata->tabsize = 4;
 
     return 0;
@@ -76,18 +93,22 @@ deinit_terminal(void)
     free(tdata->redraw_buffer);
 }
 
-static inline void
-mark_redraw(struct terminal_data *tdata, size_t __x, size_t __y) {
-    terminal_data.redraw_buffer[__x + (__y * tdata->width)] = 1;
+void
+terminal_mark_redraw(struct terminal_data *tdata, size_t __x, size_t __y) {
+    tdata->redraw_buffer[__x + (__y * tdata->width)] = 1;
+}
+void
+terminal_mark_redraw_line(struct terminal_data *tdata, size_t __y) {
+    size_t offset = tdata->width * __y;
+    memset(tdata->redraw_buffer + offset, 1, tdata->width);
+}
+void
+terminal_mark_redraw_all(struct terminal_data *tdata) {
+    memset(tdata->redraw_buffer, 1, tdata->width * tdata->height * sizeof(char));
 }
 
-static inline void
-mark_redraw_all(struct terminal_data *tdata) {
-    memset(terminal_data.redraw_buffer, 1, tdata->width * tdata->height * sizeof(char));
-}
-
-static inline void
-newline(struct terminal_data *tdata)
+void
+terminal_newline(struct terminal_data *tdata)
 {
     tdata->cursor_y++;
     if(tdata->cursor_y >= tdata->height) {
@@ -100,171 +121,295 @@ newline(struct terminal_data *tdata)
             tdata->bg_color_buffer[__i + (tdata->width*(tdata->height-1))].data = tdata->cur_bg_color.data;
         }
         tdata->cursor_y = tdata->height-1;
-        mark_redraw_all(tdata);
+        terminal_mark_redraw_all(tdata);
     }
 }
 
-static inline void
-advance_cursor(struct terminal_data *tdata)
+void
+terminal_advance_cursor(struct terminal_data *tdata)
 {
     tdata->cursor_x++;
-    mark_redraw(tdata, tdata->cursor_x-1, tdata->cursor_y);
+    terminal_mark_redraw(tdata, tdata->cursor_x-1, tdata->cursor_y);
     if(tdata->cursor_x >= tdata->width) {
         tdata->cursor_x = 0;
-        newline(tdata);
+        terminal_newline(tdata);
     }
-    mark_redraw(tdata, tdata->cursor_x, tdata->cursor_y);
+    terminal_mark_redraw(tdata, tdata->cursor_x, tdata->cursor_y);
 }
 
-static inline void
-put_at_cursor(struct terminal_data *tdata, char __c)
+void
+terminal_set_cursor(
+        struct terminal_data *data,
+        int x,
+        int y)
+{
+    int old_x = data->cursor_x;
+    int old_y = data->cursor_y;
+
+    if(x < 0) {
+        x = 0;
+    }
+    else if(x >= data->width) {
+        x = data->width-1;
+    }
+    if(y < 0) {
+        y = 0;
+    }
+    else if(y >= data->height) {
+        y = data->height-1;
+    }
+
+    data->cursor_x = x;
+    data->cursor_y = y;
+
+    terminal_mark_redraw(data, old_x, old_y);
+    terminal_mark_redraw(data, data->cursor_x, data->cursor_y);
+}
+
+char
+terminal_get_char_under_cursor(
+        struct terminal_data *data)
+{
+    return data->character_buffer[data->cursor_x + (data->cursor_y * data->width)];
+}
+
+void
+terminal_move_cursor_up(
+        struct terminal_data *data,
+        int amount)
+{
+    int cur_y = data->cursor_y;
+    int old_y = cur_y;
+    cur_y -= amount;
+    if(cur_y < 0) {
+        cur_y = 0;
+    }
+    data->cursor_y = cur_y;
+    terminal_mark_redraw(data, data->cursor_x, old_y);
+    terminal_mark_redraw(data, data->cursor_x, data->cursor_y);
+}
+
+void
+terminal_move_cursor_down(
+        struct terminal_data *data,
+        int amount)
+{
+    int cur_y = data->cursor_y;
+    int old_y = cur_y;
+    cur_y += amount;
+    if(cur_y >= data->height) {
+        cur_y = data->height-1;
+    }
+    data->cursor_y = cur_y;
+    terminal_mark_redraw(data, data->cursor_x, old_y);
+    terminal_mark_redraw(data, data->cursor_x, data->cursor_y);
+}
+
+void
+terminal_move_cursor_right(
+        struct terminal_data *data,
+        int amount)
+{
+    int cur_x = data->cursor_x;
+    int old_x = cur_x;
+    cur_x += amount;
+    if(cur_x >= data->width) {
+        cur_x = data->width-1;
+    }
+    data->cursor_x = cur_x;
+    terminal_mark_redraw(data, old_x, data->cursor_y);
+    terminal_mark_redraw(data, data->cursor_x, data->cursor_y);
+}
+
+void
+terminal_move_cursor_left(
+        struct terminal_data *data,
+        int amount)
+{
+    int cur_x = data->cursor_x;
+    int old_x = cur_x;
+    cur_x -= amount;
+    if(cur_x < 0) {
+        cur_x = 0;
+    }
+    data->cursor_x = cur_x;
+    terminal_mark_redraw(data, old_x, data->cursor_y);
+    terminal_mark_redraw(data, data->cursor_x, data->cursor_y);
+}
+
+void
+terminal_move_cursor_to_column(
+        struct terminal_data *data,
+        int offset)
+{
+    int old_offset = data->cursor_x;
+    if(offset >= data->width) {
+        data->cursor_x = data->width-1;
+    } else {
+        data->cursor_x = offset;
+    }
+    terminal_mark_redraw(data, old_offset, data->cursor_y);
+    terminal_mark_redraw(data, data->cursor_x, data->cursor_y);
+}
+
+void
+terminal_move_cursor_to_row(
+        struct terminal_data *data,
+        int offset)
+{
+    int old_offset = data->cursor_y;
+    if(offset >= data->height) {
+        data->cursor_y = data->height-1;
+    } else {
+        data->cursor_y = offset;
+    }
+    terminal_mark_redraw(data, data->cursor_x, old_offset);
+    terminal_mark_redraw(data, data->cursor_x, data->cursor_y);
+}
+
+void
+terminal_put_at_cursor(struct terminal_data *tdata, char __c)
 {
     tdata->character_buffer[tdata->cursor_x + (tdata->cursor_y*tdata->width)] = __c;
     tdata->fg_color_buffer[tdata->cursor_x + (tdata->cursor_y*tdata->width)] = tdata->cur_fg_color;
     tdata->bg_color_buffer[tdata->cursor_x + (tdata->cursor_y*tdata->width)] = tdata->cur_bg_color;
-    mark_redraw(tdata, tdata->cursor_x, tdata->cursor_y);
+    terminal_mark_redraw(tdata, tdata->cursor_x, tdata->cursor_y);
 }
 
-static inline void
-clear_cursor_to_end_of_screen(struct terminal_data *tdata) {
+void
+terminal_insert_at_cursor(
+        struct terminal_data *tdata,
+        char c)
+{
+    size_t size_of_rest_of_line = tdata->width - tdata->cursor_x;
+    size_t offset = tdata->cursor_x + (tdata->cursor_y * tdata->width);
+    if(size_of_rest_of_line > 1) {
+        memmove(tdata->character_buffer + offset + 1,
+                tdata->character_buffer + offset,
+                size_of_rest_of_line-1);
+        memmove(tdata->fg_color_buffer + offset + 1,
+                tdata->fg_color_buffer + offset,
+                size_of_rest_of_line-1);
+        memmove(tdata->bg_color_buffer + offset + 1,
+                tdata->bg_color_buffer + offset,
+                size_of_rest_of_line-1);
+    }
+    memset(tdata->redraw_buffer + offset, 1, size_of_rest_of_line);
+    terminal_put_at_cursor(tdata, c);
+}
+
+void
+terminal_delete_at_cursor(
+        struct terminal_data *tdata, char __fill_end)
+{
+    size_t size_to_move = tdata->width - (tdata->cursor_x+1);
+    size_t offset = tdata->cursor_x + (tdata->cursor_y * tdata->width);
+    memmove(tdata->character_buffer + offset,
+            tdata->character_buffer + offset + 1,
+            size_to_move);
+    memmove(tdata->fg_color_buffer + offset,
+            tdata->fg_color_buffer + offset + 1,
+            size_to_move);
+    memmove(tdata->bg_color_buffer + offset,
+            tdata->bg_color_buffer + offset + 1,
+            size_to_move);
+    tdata->character_buffer[(tdata->width-1) + (tdata->width * tdata->cursor_y)] = __fill_end;
+    terminal_mark_redraw_line(tdata, tdata->cursor_y);
+}
+
+void
+terminal_delete_line_at_cursor(
+        struct terminal_data *tdata, char __fill_end)
+{
+    if(tdata->cursor_y != tdata->width-1) {
+        size_t lines_after = (tdata->width - tdata->cursor_y) - 1;
+        size_t amt_to_move = lines_after * tdata->width;
+        size_t cursor_line_offset = tdata->width * tdata->cursor_y;
+        size_t next_line_offset = tdata->width * (tdata->cursor_y+1);
+        memmove(tdata->character_buffer + cursor_line_offset,
+                tdata->character_buffer + next_line_offset,
+                amt_to_move);
+        memmove(tdata->fg_color_buffer + cursor_line_offset,
+                tdata->fg_color_buffer + next_line_offset,
+                amt_to_move);
+        memmove(tdata->bg_color_buffer + cursor_line_offset,
+                tdata->bg_color_buffer + next_line_offset,
+                amt_to_move);
+    }
+    // Clear the bottom line
+    terminal_clear_line(tdata, tdata->width-1);
+    terminal_mark_redraw_all(tdata);
+}
+
+void
+terminal_clear_cursor_to_end_of_screen(struct terminal_data *tdata) {
     size_t cursor_offset = tdata->cursor_x + (tdata->cursor_y*tdata->width);
     size_t room_after = (tdata->width * tdata->height) - cursor_offset;
     memset(tdata->character_buffer + cursor_offset, ' ', room_after);
+    for(size_t i = 0; i < room_after; i++) {
+        tdata->fg_color_buffer[cursor_offset + i] = tdata->cur_fg_color;
+        tdata->bg_color_buffer[cursor_offset + i] = tdata->cur_bg_color;
+    }
     memset(tdata->redraw_buffer + cursor_offset, 1, room_after);
 }
-static inline void
-clear_cursor_to_beginning_of_screen(struct terminal_data *tdata)
+void
+terminal_clear_cursor_to_beginning_of_screen(struct terminal_data *tdata)
 {
     size_t cursor_offset = tdata->cursor_x + (tdata->cursor_y*tdata->width);
     memset(tdata->character_buffer, ' ', cursor_offset+1);
+    for(size_t i = 0; i < cursor_offset+1; i++) {
+        tdata->fg_color_buffer[i] = tdata->cur_fg_color;
+        tdata->bg_color_buffer[i] = tdata->cur_bg_color;
+    }
     memset(tdata->redraw_buffer, 1, cursor_offset+1);
 }
-static inline void
-clear_entire_screen(struct terminal_data *tdata) {
+void
+terminal_clear_entire_screen(struct terminal_data *tdata) {
     memset(tdata->character_buffer, ' ', tdata->width*tdata->height);
+    for(size_t i = 0; i < tdata->width * tdata->height; i++) {
+        tdata->fg_color_buffer[i] = tdata->cur_fg_color;
+        tdata->bg_color_buffer[i] = tdata->cur_bg_color;
+    }
     memset(tdata->redraw_buffer, 1, tdata->width*tdata->height);
 }
 
-static inline void
-handle_csi(struct terminal_data *tdata)
-{
-    char c;
-
-    size_t num_parameter_bytes = 0;
-    char parameter_bytes[16+1];
-    c = fgetc(tdata->input_file);
-    while(num_parameter_bytes < 16) {
-        if(0x30 <= c && c <= 0x3F) {
-            parameter_bytes[num_parameter_bytes] = c;
-            num_parameter_bytes++;
-            c = fgetc(tdata->input_file);
-        } else {
-            break;
-        }
+void
+terminal_clear_cursor_to_end_of_line(struct terminal_data *tdata) {
+    size_t cursor_offset = tdata->cursor_x + (tdata->cursor_y*tdata->width);
+    size_t rest_of_line = tdata->width - tdata->cursor_x;
+    memset(tdata->character_buffer + cursor_offset, ' ', rest_of_line);
+    for(size_t i = 0; i < rest_of_line; i++) {
+        tdata->fg_color_buffer[cursor_offset + i] = tdata->cur_fg_color;
+        tdata->bg_color_buffer[cursor_offset + i] = tdata->cur_bg_color;
     }
-   
-    size_t num_intermediate_bytes = 0;
-    char intermediate_bytes[16+1];
-    while(num_intermediate_bytes < 16) {
-        if(0x20 <= c && c <= 0x2F) {
-            intermediate_bytes[num_intermediate_bytes] = c;
-            num_intermediate_bytes++;
-            c = fgetc(tdata->input_file);
-        } else {
-            break;
-        }
-    }
-
-    if(!(0x40 <= c && c <= 0x7E)) {
-        // Missing Terminator
-        put_at_cursor(tdata, '?');
-        advance_cursor(tdata);
-        return;
-    }
-
-    char terminator = c;
-
-    int n;
-
-#define SINGLE_PARAMETER_NUM(__default) \
-    do {\
-        if(num_parameter_bytes > 0) {\
-            parameter_bytes[num_parameter_bytes] = '\0';\
-            n = atoi(parameter_bytes);\
-        } else {\
-            n = __default;\
-        }\
-    } while(0)
-
-    switch(terminator) {
-        case 'J':
-            // Erase in display
-            SINGLE_PARAMETER_NUM(0);
-            switch(n) {
-                case 0: clear_cursor_to_end_of_screen(tdata); return;
-                case 1: clear_cursor_to_beginning_of_screen(tdata); return;
-                case 2: clear_entire_screen(tdata); tdata->cursor_x = 0; tdata->cursor_y = 0; return;
-                case 3: clear_entire_screen(tdata); /* Note we should also erase any "scrollback */ return;
-                default: put_at_cursor(tdata, '?'); advance_cursor(tdata); return;
-            }
-    }
+    memset(tdata->redraw_buffer + cursor_offset, 1, rest_of_line);
 }
 
-static inline void
-handle_escape(struct terminal_data *tdata)
-{
-    char c = fgetc(tdata->input_file);
-    switch(c) {
-        case '[':
-            return handle_csi(tdata);
-        default:
-            put_at_cursor(tdata, '?');
-            advance_cursor(tdata);
-            break;
+void
+terminal_clear_start_of_line_to_cursor(struct terminal_data *tdata) {
+    size_t line_offset = (tdata->cursor_y*tdata->width);
+    size_t len = tdata->cursor_x;
+    memset(tdata->character_buffer + line_offset, ' ', len);
+    for(size_t i = 0; i < len; i++) {
+        tdata->fg_color_buffer[line_offset + i] = tdata->cur_fg_color;
+        tdata->bg_color_buffer[line_offset + i] = tdata->cur_bg_color;
     }
+    terminal_mark_redraw_line(tdata, tdata->cursor_y);
 }
 
-int
-run_terminal(void)
-{
-    struct terminal_data *tdata = &terminal_data;
-
-    mark_redraw_all(tdata);
-    while(tdata->running) {
-        char c = fgetc(tdata->input_file);
-        switch(c) {
-            case '\r':
-                tdata->cursor_x = 0;
-                break;
-            case '\n':
-                tdata->cursor_x = 0;
-                newline(tdata);
-                break;
-            case '\b':
-                if(tdata->cursor_x > 0) {
-                    tdata->cursor_x--;
-                    mark_redraw(tdata, tdata->cursor_x+1, tdata->cursor_y);
-                    mark_redraw(tdata, tdata->cursor_x, tdata->cursor_y);
-                }
-                break;
-            case '\t':
-                for(size_t i = 0; i < tdata->tabsize; i++) {
-                    put_at_cursor(tdata, ' ');
-                    advance_cursor(tdata);
-                    if(tdata->cursor_x % tdata->tabsize == 0) {
-                        break;
-                    }
-                }
-                break;
-            case 0x1B:
-                handle_escape(tdata);
-                break;
-            default:
-                put_at_cursor(tdata, c);
-                advance_cursor(tdata);
-                break;
-        }
-    }
-
-    return 0;
+void
+terminal_clear_cursor_line(struct terminal_data *tdata) {
+    terminal_clear_line(tdata, tdata->cursor_y);
 }
+
+void
+terminal_clear_line(struct terminal_data *tdata, size_t __y) {
+    size_t line_offset = (__y*tdata->width);
+    memset(tdata->character_buffer + line_offset, ' ', tdata->width);
+    for(size_t i = 0; i < tdata->width; i++) {
+        tdata->fg_color_buffer[line_offset + i] = tdata->cur_fg_color;
+        tdata->bg_color_buffer[line_offset + i] = tdata->cur_bg_color;
+    }
+    terminal_mark_redraw_line(tdata, __y);
+}
+

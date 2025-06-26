@@ -26,7 +26,7 @@ main(int argc, const char **argv)
     const char *input_path = NULL;
 
     int opt;
-    while((opt = getopt(argc, argv, "f:n:i:")) != -1) {
+    while((opt = getopt(argc, (char **)argv, "f:n:i:")) != -1) {
         switch(opt) {
            case 'f':
                 path = optarg;

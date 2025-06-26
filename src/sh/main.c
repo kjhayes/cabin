@@ -9,6 +9,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <errno.h>
+#include <unistd.h>
 
 static int
 run_line(const char *raw)
@@ -114,7 +115,10 @@ main(int argc, const char **argv)
     while(running)
     {
         if(interactive) {
-            puts("sh> ");
+            static char cwd_buffer[256];
+            getcwd(cwd_buffer, 256);
+            cwd_buffer[256-1] = '\0';
+            printf("[%s] ", cwd_buffer);
         }
 
         int prev_was_whitespace = 1;
@@ -176,6 +180,14 @@ main(int argc, const char **argv)
         } while(1);
 
         command_buffer[input_end] = '\0';
+      
+        // End the input as soon as a comment is found
+        for(size_t i = 0; i < input_end; i++) {
+            if(command_buffer[i] == '#') {
+                command_buffer[i] = '\0';
+                break;
+            }
+        }
 
         int res = run_line(command_buffer);
         if(res) {

@@ -16,6 +16,4 @@ typedef struct color
     } __attribute__((packed));
 } color_t;
 
-
-
 #endif

@@ -1,5 +1,4 @@
 
-#define CONFIG_X64
 #include <kanawha/sys-wrappers.h>
 #include <kanawha/spawn.h>
 #include <kanawha/process.h>

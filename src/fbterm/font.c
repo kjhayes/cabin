@@ -63,7 +63,7 @@ load_font(const char *path)
     fdata->height = psf_1_header.glyph_size;
     fdata->num_glyphs = 256;
 
-    fdata->glyphs = malloc(sizeof(struct image *) * fdata->num_glyphs);
+    fdata->glyphs = malloc(sizeof(struct glyph_data) * fdata->num_glyphs);
     if(fdata->glyphs == NULL) {
         free(font_data);
         free(fdata);
@@ -72,39 +72,45 @@ load_font(const char *path)
     memset(fdata->glyphs, 0, sizeof(struct image *) * fdata->num_glyphs);
 
     for(size_t i = 0; i < fdata->num_glyphs; i++) {
-        struct kfb_image *img = malloc(sizeof(struct kfb_image));
-        if(img == NULL) {
+        struct kfb_image *fg_img = malloc(sizeof(struct kfb_image));
+        struct kfb_image *bg_img = malloc(sizeof(struct kfb_image));
+        color_t *fg_pixel_data = malloc(sizeof(color_t) * fdata->width * fdata->height);
+        color_t *bg_pixel_data = malloc(sizeof(color_t) * fdata->width * fdata->height);
+
+        if(fg_img == NULL || bg_img == NULL || fg_pixel_data == NULL || bg_pixel_data == NULL) {
             for(size_t fi = 0; fi < i; fi++) {
-                free(fdata->glyphs[fi]->data);
-                free(fdata->glyphs[fi]);
+                free(fdata->glyphs[fi].fg->data);
+                free(fdata->glyphs[fi].bg->data);
+                free(fdata->glyphs[fi].fg);
+                free(fdata->glyphs[fi].bg);
             }
             free(fdata->glyphs);
             free(fdata);
             free(font_data);
+            free(fg_img);
+            free(bg_img);
+            free(fg_pixel_data);
+            free(bg_pixel_data);
             return NULL;
         }
 
-        color_t *pixel_data = malloc(sizeof(color_t) * fdata->width * fdata->height);
-        if(pixel_data == NULL) {
-            for(size_t fi = 0; fi < i; fi++) {
-                free(fdata->glyphs[fi]->data);
-                free(fdata->glyphs[fi]);
-            }
-            free(img);
-            free(fdata->glyphs);
-            free(fdata);
-            free(font_data);
-            return NULL;
-        }
+        fg_img->resx = fdata->width;
+        fg_img->resy = fdata->height;
+        fg_img->data = (void*)fg_pixel_data;
+        fg_img->format = GLYPH_FORMAT;
+        fg_img->order = FB_LAYER_ORDER_ROW_MAJOR;
+        fg_img->stride = sizeof(color_t);
+        fg_img->offset = 0;
+        fg_img->data_size = fg_img->resx * fg_img->resy * sizeof(color_t);
 
-        img->resx = fdata->width;
-        img->resy = fdata->height;
-        img->data = (void*)pixel_data;
-        img->format = GLYPH_FORMAT;
-        img->order = FB_LAYER_ORDER_ROW_MAJOR;
-        img->stride = sizeof(color_t);
-        img->offset = 0;
-        img->data_size = img->resx * img->resy * sizeof(color_t);
+        bg_img->resx = fdata->width;
+        bg_img->resy = fdata->height;
+        bg_img->data = (void*)bg_pixel_data;
+        bg_img->format = GLYPH_FORMAT;
+        bg_img->order = FB_LAYER_ORDER_ROW_MAJOR;
+        bg_img->stride = sizeof(color_t);
+        bg_img->offset = 0;
+        bg_img->data_size = bg_img->resx * bg_img->resy * sizeof(color_t);
 
         // Render the image
         uint8_t *glyph = font_data + (i * fdata->height);
@@ -112,22 +118,32 @@ load_font(const char *path)
             uint8_t bits = glyph[fy];
             for(int fx = 0; fx < 8; fx++) {
                 int value = (bits >> (7-fx)) & 1;
-                color_t *pixel = &((color_t*)img->data)[fx + (fy*fdata->width)];
+                color_t *fg_pixel = &((color_t*)fg_img->data)[fx + (fy*fdata->width)];
+                color_t *bg_pixel = &((color_t*)bg_img->data)[fx + (fy*fdata->width)];
                 if(value) {
-                    pixel->r = 0xFF;
-                    pixel->g = 0xFF;
-                    pixel->b = 0xFF;
-                    pixel->a = 0xFF;
+                    fg_pixel->r = 0xFF;
+                    fg_pixel->g = 0xFF;
+                    fg_pixel->b = 0xFF;
+                    fg_pixel->a = 0xFF;
+                    bg_pixel->r = 0x00;
+                    bg_pixel->g = 0x00;
+                    bg_pixel->b = 0x00;
+                    bg_pixel->a = 0x00;
                 } else {
-                    pixel->r = 0x00;
-                    pixel->g = 0x00;
-                    pixel->b = 0x00;
-                    pixel->a = 0x00;
+                    fg_pixel->r = 0x00;
+                    fg_pixel->g = 0x00;
+                    fg_pixel->b = 0x00;
+                    fg_pixel->a = 0x00;
+                    bg_pixel->r = 0xFF;
+                    bg_pixel->g = 0xFF;
+                    bg_pixel->b = 0xFF;
+                    bg_pixel->a = 0xFF;
                 }
             }
         }
 
-        fdata->glyphs[i] = img;
+        fdata->glyphs[i].fg = fg_img;
+        fdata->glyphs[i].bg = bg_img;
     }
 
     free(font_data);
@@ -139,8 +155,10 @@ void
 unload_font(struct font_data *fdata)
 {
     for(size_t i = 0; i < fdata->num_glyphs; i++) {
-        free(fdata->glyphs[i]->data);
-        free(fdata->glyphs[i]);
+        free(fdata->glyphs[i].fg->data);
+        free(fdata->glyphs[i].bg->data);
+        free(fdata->glyphs[i].fg);
+        free(fdata->glyphs[i].bg);
     }
     free(fdata->glyphs);
     free(fdata);

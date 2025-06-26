@@ -1,11 +1,36 @@
-#ifndef __CABIN_KSH__COMMAND_H__
-#define __CABIN_KSH__COMMAND_H__
+#ifndef __KSH_COMMAND_H__
+#define __KSH_COMMAND_H__
 
-struct command_string {
-    char *str;
+#include <stdint.h>
+#include <stddef.h>
 
-    struct command_string *next;
-    struct command_string *prev;
+struct command_state
+{
+    size_t bufsize;
+    char *buffer;
+
+    size_t data_len;
+    size_t cursor_pos;
+
+    int printed_prefix;
 };
+
+int
+command_state_init(
+        struct command_state *state);
+
+int
+command_state_deinit(
+        struct command_state *state);
+
+int
+command_state_tick(
+        struct command_state *state,
+        int have_char,
+        char c);
+
+char *
+command_state_complete_line(
+        struct command_state *state);
 
 #endif

@@ -16,7 +16,7 @@ int main(int argc, const char **argv)
     if(pid == 0) {
 
         // Child
-        printf("Hello From Child! pid=%lld\n", (long long)kanawha_sys_getpid());
+        printf("Hello From Child! pid=%lld\n", (long long)getpid());
 
         char * argv[] = {
             "cat",
@@ -28,7 +28,7 @@ int main(int argc, const char **argv)
         return -1;
 
     } else {
-        printf("Hello From Parent! pid=%lld, child_pid=%d\n", (long long)kanawha_sys_getpid(), pid);
+        printf("Hello From Parent! pid=%lld, child_pid=%d\n", (long long)getpid(), pid);
         // Parent
         wait(NULL);
         printf("Waited on Child!\n");

@@ -1,34 +1,42 @@
 
-mount /testimg.ext2 / root ext2
+mount /blk blkdev -t sys -s
+mount /root /blk/virtio-blk-0 -t ext2
 
 mkdir /root/sys
 
-mkdir /root/sys/chr
-mount chardev /root/sys/ chr sys y
 mkdir /root/sys/ramfile
-mount ramfile /root/sys/ ramfile sys y
-mkdir /root/sys/kbd
-mount kbd /root/sys/ kbd sys y
-mkdir /root/sys/log
-mount log /root/sys/ log sys y
-mkdir /root/sys/fb
-mount fbdev /root/sys/ fb sys y
-mkdir /root/sys/rand
-mount randdev /root/sys/ rand sys y
+mount /root/sys/ramfile ramfile -t sys -s
 
 mkdir /root/sys/initrd
-mount /root/sys/ramfile/initrd /root/sys/ initrd cpio
+mount /root/sys/initrd /root/sys/ramfile/initrd -t cpio
 
 chroot /root
 
-setstdout /sys/chr/COM0
-setstderr /sys/chr/COM0
+setenv PATH /sys/initrd/;/usr/bin/
 
-setenv PATH /sys/initrd/
+mkdir /sys/chr
+mount /sys/chr chardev -t sys -s
+mkdir /sys/kbd
+mount /sys/kbd kbd -t sys -s
+mkdir /sys/log
+mount /sys/log log -t sys -s
+mkdir /sys/fb
+mount /sys/fb fbdev -t sys -s
+mkdir /sys/rand
+mount /sys/rand randdev -t sys -s
+mkdir /sys/blk
+mount /sys/blk blkdev -t sys -s
+mkdir /sys/pci
+mount /sys/pci pci -t sys -s
+mkdir /sys/acpi
+mount /sys/acpi acpi -t sys -s
+mkdir /sys/proc
+mount /sys/proc proc -t sys -s
 
-cd /sys/
-xlatekbd /sys/kbd/ps2-kbd-0 | sh | fbterm -m 2 -l 0 -f /sys/fb/vga -t /sys/initrd/standard.psf
+setenv TERM ansi
+setenv TERMINFO /usr/share/terminfo
 
-cd /sys/initrd/
-doomgeneric /sys/fb/vga /sys/kbd/ps2-kbd-0
+xlatekbd /sys/kbd/ps2-kbd-0 | sh | fbterm -m 0 -l 0 -f /sys/fb/virtio-gpu-0 -t /sys/initrd/standard.psf -d /fbterm.log
+#xlatekbd /sys/kbd/ps2-kbd-0 | sh | fbterm -m 2 -l 0 -f /sys/fb/vga -t /sys/initrd/standard.psf
+#xlatekbd /sys/kbd/ps2-kbd-0 | sh
 
