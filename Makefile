@@ -73,7 +73,6 @@ COMMON_FLAGS += \
 
 EXTRA_LIBS += \
 			-lkfb \
-			-lncurses_g \
 
 COMMON_DEPS += $(AUTOCONF)
 AFLAGS += -D__ASSEMBLER__
@@ -105,7 +104,9 @@ BINARIES := \
 	lsacpi \
 	dumpenv \
 	testdir \
-	disptga \
+	nettest \
+	stress \
+	whiscash \
 
 define binary_build_rules =
 

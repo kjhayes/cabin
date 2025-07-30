@@ -61,6 +61,7 @@ compile_commands.json
 *.log
 
 .config
+.config.old
 
 *.img
 *.img.old

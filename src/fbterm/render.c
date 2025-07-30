@@ -80,6 +80,12 @@ run_renderer(
 
     int force = 1;
 
+    size_t layer_width = fb->current_mode_info->layer_infos[layer].width;
+    size_t layer_height = fb->current_mode_info->layer_infos[layer].height;
+    fprintf(tdata->log_file, "Screen Dimensions (%ld, %ld)\n",
+            layer_width,
+            layer_height);
+ 
     while(tdata->running) {
         RENDER_ALL(force);
         if(render_changed) {

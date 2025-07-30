@@ -1,9 +1,17 @@
 
-QEMU_FLAGS += -device virtio-gpu-pci
+QEMU_PREFIX :=
+#QEMU_PREFIX := ~/qemu/build/
+
+QEMU_DEBUG_LOG ?= qemu.log
+QEMU_FLAGS += -D $(QEMU_DEBUG_LOG) -d guest_errors
+
+QEMU_FLAGS += -trace "usb_*"
+
 #QEMU_FLAGS += -device virtio-gpu-pci
-QEMU_FLAGS += -drive file=$(ROOT_DIR)/disk.img,if=none,id=virtio-disk0,format=raw \
+#QEMU_FLAGS += -drive file=$(ROOT_DIR)/disk.img,if=none,id=virtio-disk0,format=raw \
 			  -device virtio-blk-pci,drive=virtio-disk0,id=disk0
-#QEMU_FLAGS += -device virtio-rng
+
+QEMU_FLAGS += -device virtio-rng
 
 #QEMU_FLAGS += -drive id=disk,file=ahci.img,if=none \
               -device ahci,id=ahci \
@@ -15,36 +23,48 @@ QEMU_FLAGS += -drive file=$(ROOT_DIR)/disk.img,if=none,id=virtio-disk0,format=ra
 
 QEMU_FLAGS += -device edu
 QEMU_FLAGS += -device pci-testdev
-# QEMU_FLAGS += -nic user,model=virtio-net-pci-non-transitional
+
+#QEMU_FLAGS += -netdev user,id=net0,net=192.168.76.0/24,dhcpstart=192.168.76.9 \
+			  -object filter-dump,id=f1,netdev=net0,file=netdump.dat
+#QEMU_FLAGS += -device virtio-net-pci,netdev=net0,mq=on,vectors=1
+
+QEMU_FLAGS += \
+              -device nec-usb-xhci,id=xhci                      \
+              -drive if=none,id=stick0,format=raw,file=./usb0.img \
+              -device usb-storage,bus=xhci.0,drive=stick0,id=stick0 \
+              -drive if=none,id=stick1,format=raw,file=./usb1.img \
+              -device usb-storage,bus=xhci.0,drive=stick1,id=stick1 \
+
 #QEMU_FLAGS += -device e1000e
 
-QEMU_FLAGS += -device e1000e,netdev=net0 -netdev user,id=net0
-
 ifdef CONFIG_X64
-QEMU := qemu-system-x86_64
+QEMU := $(QEMU_PREFIX)qemu-system-x86_64
 ISO := $(OUTPUT_DIR)/cabin.iso
 QEMU_DEPS += $(ISO)
 QEMU_FLAGS += -cdrom $(ISO)
 
 QEMU_FLAGS += -serial stdio
-QEMU_FLAGS += -smp 4
+QEMU_FLAGS += -smp 1
 
-#QEMU_FLAGS += -device VGA
-QEMU_FLAGS += -accel tcg
+QEMU_FLAGS += -vga none
+QEMU_FLAGS += -device VGA
+QEMU_FLAGS += -device virtio-gpu-pci
+QEMU_FLAGS += -accel kvm
 QEMU_FLAGS += -machine q35
-QEMU_FLAGS += -m 8G
+QEMU_FLAGS += -m 8G 
 endif
 
 ifdef CONFIG_RISCV64
-QEMU := qemu-system-riscv64
+QEMU := $(QEMU_PREFIX)qemu-system-riscv64
 QEMU_FLAGS += -kernel $(KANAWHA_OUTPUT_DIR)/kanawha.bin
 QEMU_FLAGS += -bios default
 QEMU_FLAGS += -serial stdio
 QEMU_FLAGS += -M virt
-QEMU_FLAGS += -m 8G
+QEMU_FLAGS += -m 2G
 
 QEMU_DEPS += $(OUTPUT_DIR)/initrd
 QEMU_FLAGS += -initrd $(OUTPUT_DIR)/initrd
+
 #QEMU_FLAGS += -machine dumpdtb=virt.dtb
 endif
 
@@ -53,5 +73,6 @@ qemu: $(QEMU_DEPS)
 	$(QEMU) $(QEMU_FLAGS)
 qemu-gdb: $(QEMU_DEPS)
 	$(QEMU) $(QEMU_FLAGS) -gdb tcp::1234 -S -no-reboot -no-shutdown
+
 endif
 

@@ -141,7 +141,7 @@ int main(int argc, const char **argv)
     }
 
 #define TERM_WIDTH  80
-#define TERM_HEIGHT 24
+#define TERM_HEIGHT 25
 
     res = init_terminal(stdin, log_file, TERM_WIDTH, TERM_HEIGHT);
     if(res) {

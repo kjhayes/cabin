@@ -1,12 +1,12 @@
 
-mount /blk blkdev -t sys -s
-mount /root /blk/virtio-blk-0 -t ext2
+mount /ramfile ramfile -t sys -s
+mount /initrd /ramfile/initrd -t cpio
+mount /root /initrd/disk.img -t ext2
 
 mkdir /root/sys
 
 mkdir /root/sys/ramfile
 mount /root/sys/ramfile ramfile -t sys -s
-
 mkdir /root/sys/initrd
 mount /root/sys/initrd /root/sys/ramfile/initrd -t cpio
 
@@ -16,6 +16,7 @@ setenv PATH /sys/initrd/;/usr/bin/
 
 mkdir /sys/chr
 mount /sys/chr chardev -t sys -s
+
 mkdir /sys/kbd
 mount /sys/kbd kbd -t sys -s
 mkdir /sys/info
@@ -37,9 +38,26 @@ mount /sys/eth ethdev -t sys -s
 mkdir /sys/ipv4
 mount /sys/ipv4 ipv4 -t sys -s
 
-setenv TERM ansi
-setenv TERMINFO /usr/share/terminfo
+setstdout /sys/chr/COM0
+setstderr /sys/chr/COM0
+setstdin /sys/chr/COM0
 
-xlatekbd /sys/kbd/ps2-kbd-0 | sh | fbterm -m 0 -l 0 -f /sys/fb/virtio-gpu-0 -t /sys/initrd/standard.psf -d /fbterm.log
-#xlatekbd /sys/kbd/ps2-kbd-0 | sh | fbterm -m 2 -l 0 -f /sys/fb/vga -t /sys/initrd/standard.psf
+mkdir /ramfs
+mount /ramfs ramfs -t ramfs -s
+
+mkdir fat
+mount /fat /sys/initrd/fatdisk.img -t fat
+
+write -of /sys/fb/vga/mode 3
+xlatekbd /sys/kbd/ps2-kbd-0 | sh | fbterm -m 3 -l 0 -f /sys/fb/vga -t /sys/initrd/standard.psf -d /sys/chr/COM0
+
+#whiscash /sys/fb/vga /sys/kbd/ps2-kbd-0
+#doomgeneric /sys/fb/vga /sys/kbd/ps2-kbd-0
+
+
+#setstdout /sys/chr/vga-serial
+#setstderr /sys/chr/vga-serial
+#xlatekbd /sys/kbd/ps2-kbd-0 | sh
+
+#xlatekbd /sys/kbd/ps2-kbd-0 | sh | fbterm -m 2 -l 0 -f /sys/fb/vga -t /sys/initrd/standard.psf -d /fbterm.log
 

@@ -9,7 +9,7 @@ $(INITRD_ROOT): $(OUTPUT_DIR) $(BINARIES)
 	cp $(addprefix $(OUTPUT_DIR)/,$(BINARIES)) $@
 	cp $(SOURCE_DIR)/scripts/init-riscv64.sh $@
 	cp $(SOURCE_DIR)/scripts/init-x64.sh $@
-	cp $(SOURCE_DIR)/scripts/init-vga.sh $@
+	cp $(SOURCE_DIR)/scripts/init.sh $@
 	cp $(SOURCE_DIR)/scripts/init-doom.sh $@
 	cp $(ROOT_DIR)/initrd-extra/* $@
 
