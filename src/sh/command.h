@@ -20,6 +20,8 @@ struct simple_cmd
     fd_t stdin;
     fd_t stdout;
     fd_t stderr;
+
+    int bg;
 };
 
 struct cmd 

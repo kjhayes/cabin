@@ -1,6 +1,6 @@
 
 #include <kanawha/sys-wrappers.h>
-#include <kanawha/kfb.h>
+#include <kfb/kfb.h>
 #include <kanawha/file.h>
 #include <kanawha/spawn.h>
 #include <errno.h>
@@ -8,6 +8,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <poll.h>
 
 #include "color.h"
 #include "render.h"
@@ -39,13 +42,13 @@ find_maximum_fb_mode(
         for(int layer = 0; layer < info->layer_count; layer++) {
             struct fb_layer_info *layer_info = &info->layer_infos[layer];
             size_t dimensions;
-            switch(layer_info->format) {
-                case FB_LAYER_FORMAT_ASCII:
-                case FB_LAYER_FORMAT_VGA_CHAR:
+            switch(layer_info->layout.format) {
+                case GFX_FORMAT_ASCII:
+                case GFX_FORMAT_VGA_CHAR:
                     dimensions = 0;
                     break;
                 default:
-                    dimensions = layer_info->width * layer_info->height;
+                    dimensions = layer_info->layout.width * layer_info->layout.height;
                     break;
             }
 
@@ -141,40 +144,51 @@ int main(int argc, const char **argv)
     }
 
 #define TERM_WIDTH  80
-#define TERM_HEIGHT 25
+#define TERM_HEIGHT 50
 
-    res = init_terminal(stdin, log_file, TERM_WIDTH, TERM_HEIGHT);
+    res = init_terminal(stdin, log_file, TERM_WIDTH, TERM_HEIGHT, mode);
     if(res) {
         fprintf(stderr, "Failed to allocate terminal buffer!\n");
         exit(EXIT_FAILURE);
     }
 
-    pid_t input_thread_pid;
-    extern void _thread_start(void);
-    res = kanawha_sys_spawn(
-            _thread_start,
-            (void*)run_ansi_terminal,
-            SPAWN_MMAP_SHARED|SPAWN_ENV_CLONE|SPAWN_FILES_CLONE,
-            &input_thread_pid);
+    res = ansi_terminal_init(&terminal_data);
     if(res) {
-        fprintf(stderr, "Failed to spawn input thread!\n");
+        fprintf(stderr, "Failed to init ansi terminal!\n");
         exit(EXIT_FAILURE);
     }
 
-    run_renderer(
+    while(terminal_data.running)
+    {
+        render_update(
             &terminal_data,
             fdata,
             fb,
             layer);
 
-    int input_thread_ret;
-    while(kanawha_sys_reap(0, &input_thread_pid, &input_thread_ret)) {}
+	ansi_terminal_update(&terminal_data);
+	for(size_t __i = 0; __i < 256; __i++)
+	{
+	    struct pollfd pollfd[1];
+	    pollfd[0].fd = fileno(terminal_data.input_file);
+	    pollfd[0].events = POLLIN|POLLPRI;
+	    res = poll(pollfd, 1, 0);
+	    if(res > 0 && (pollfd[0].revents & (POLLIN|POLLPRI))) {
+	        // Only update the terminal if we know we can read at
+	        // least 1 character
+	        ansi_terminal_update(
+	            &terminal_data);
+	    } else {
+		break;
+	    }
+	}
+    }
 
     deinit_terminal();
     unload_font(fdata);
     kfb_unload_framebuffer(fb);
 
-    return input_thread_ret;
+    return 0;
 }
 
 

@@ -25,8 +25,6 @@ setstdin  /sys/chr/serial
 setstdout /sys/chr/serial
 setstderr /sys/chr/serial
 
-setenv PATH /sys/initrd/
-
 cd /sys/
 exec sh
 

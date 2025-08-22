@@ -8,18 +8,18 @@
 struct terminal_data terminal_data = { 0 };
 
 int
-init_terminal(
-        FILE *input_file,
-        FILE *log_file,
-        size_t width,
-        size_t height)
+terminal_resize(
+	struct terminal_data *tdata,
+	size_t width,
+	size_t height)
 {
-    struct terminal_data *tdata = &terminal_data;
-    memset(tdata, 0, sizeof(struct terminal_data));
+    free(tdata->redraw_buffer);
+    free(tdata->character_buffer);
+    free(tdata->fg_color_buffer);
+    free(tdata->bg_color_buffer);
 
     tdata->width = width;
     tdata->height = height;
-    tdata->log_file = log_file;
 
     tdata->redraw_buffer = malloc(width*height*sizeof(unsigned char));
     if(tdata->redraw_buffer == NULL) {
@@ -47,6 +47,7 @@ init_terminal(
         free(tdata->redraw_buffer);
         return -EINVAL;
     }
+
     for(size_t y = 0; y < height; y++) {
         for(size_t x = 0; x < width; x++) {
             tdata->fg_color_buffer[x + (y*width)].r = 0xFF;
@@ -62,6 +63,31 @@ init_terminal(
     }
     memset(tdata->bg_color_buffer, 0x00, width*height*sizeof(color_t));
 
+    return 0;
+}
+
+int
+init_terminal(
+        FILE *input_file,
+        FILE *log_file,
+        size_t width,
+        size_t height,
+	size_t fb_mode)
+{
+    struct terminal_data *tdata = &terminal_data;
+    memset(tdata, 0, sizeof(struct terminal_data));
+
+    tdata->log_file = log_file;
+    tdata->cur_fb_mode = fb_mode;
+    tdata->req_fb_mode = fb_mode;
+
+    tdata->redraw_buffer = NULL;
+    tdata->character_buffer = NULL;
+    tdata->fg_color_buffer = NULL;
+    tdata->bg_color_buffer = NULL;
+
+    terminal_resize(tdata, width, height);
+
     tdata->running = 1;
     tdata->input_file = input_file;
     tdata->cursor_x = 0;
@@ -74,9 +100,12 @@ init_terminal(
     tdata->cur_bg_color.g = 0x00;
     tdata->cur_bg_color.b = 0x00;
     tdata->cur_bg_color.a = 0xFF;
-    tdata->cur_bold = 0;
-    tdata->cur_italic = 0;
-    tdata->cur_underline = 0;
+
+    tdata->echo_on = 1;
+    tdata->bold_on = 0;
+    tdata->italic_on = 0;
+    tdata->underline_on = 0;
+
     tdata->last_character = ' ';
     tdata->tabsize = 4;
 

@@ -4,7 +4,7 @@
 #include <sys/wait.h>
 #include <errno.h>
 
-#define NUM_CHILDREN 100 // Number of child processes to create
+#define NUM_CHILDREN 1000 // Number of child processes to create
 
 void child_process_task(int child_id) {
     printf("Child %d (PID: %d) starting work...\n", (int)child_id, (int)getpid());

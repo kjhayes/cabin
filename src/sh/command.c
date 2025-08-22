@@ -3,7 +3,6 @@
 #include <kanawha/process.h>
 #include <kanawha/environ.h>
 #include "command.h"
-#include "thread.h"
 
 #include <unistd.h>
 #include <stdlib.h>
@@ -12,104 +11,12 @@
 #include <ctype.h>
 #include <string.h>
 
-//static int
-//open_executable(
-//        const char *exec_path,
-//        fd_t *fd)
-//{
-//    int res;
-//
-//    size_t pathlen = strlen(exec_path);
-//
-//#define ENV_PATHLEN 0x100
-//    char path_buf[ENV_PATHLEN + pathlen + 1];
-//    res = kanawha_sys_environ(
-//            "PATH",
-//            path_buf,
-//            ENV_PATHLEN,
-//            ENV_GET);
-//    size_t env_pathlen = 0;
-//    if(res == 0) {
-//        path_buf[ENV_PATHLEN] = '\0';
-//        env_pathlen = strlen(path_buf);
-//    }
-//#undef ENV_PATHLEN 
-//
-//    strcpy(path_buf + env_pathlen, exec_path);
-//
-//    res = kanawha_sys_open(
-//                path_buf,
-//                FILE_PERM_EXEC|FILE_PERM_READ,
-//                0,
-//                fd);
-//    if(res) {
-//        return res;
-//    }
-//
-//    return 0;
-//}
-
-// Setup the ARGV environment variable with the provided argc and argv,
-// ignoring any NULL entries in "argv"
-//static int
-//setup_argv_env(
-//    struct simple_cmd *cmd)
-//{
-//    int res;
-//
-//
-//    char *argv_data = malloc(argv_data_len);
-//    if(argv_data == NULL) {
-//        return -ENOMEM;
-//    }
-//
-//    char *argv_data_iter = argv_data;
-//
-//    // Layout the "ARGV" environment variable
-//    {
-//        size_t cmd_len = strlen(cmd->command);
-//        memcpy(argv_data_iter, cmd->command, cmd_len);
-//        argv_data_iter[cmd_len] = ' ';
-//        argv_data_iter += (cmd_len + 1);
-//    }
-//    for(struct cmd_arg *iter = cmd->args;
-//            iter != NULL;
-//            iter = iter->next)
-//    {
-//        if(iter->value == NULL) {
-//            continue;
-//        }
-//        size_t arglen = strlen(iter->value);
-//        memcpy(argv_data_iter, iter->value, arglen);
-//        argv_data_iter[arglen] = ' ';
-//        argv_data_iter += (1 + arglen);
-//    }
-//
-//    // Set ARGV
-//    res = kanawha_sys_environ("ARGV", argv_data, argv_data_len, ENV_SET);
-//    if(res) {
-//        free(argv_data);
-//        return res;
-//    }
-//
-//    free(argv_data);
-//    return 0;
-//}
-
 static int
 exec_simple_cmd(struct simple_cmd *cmd) 
 {
     int res;
 
     fd_t exec_file;
-
-    /*
-    printf("exec_simple_cmd(%s, stdin=%p, stdout=%p, stderr=%p)\n",
-            cmd->command,
-            (uintptr_t)cmd->stdin,
-            (uintptr_t)cmd->stdout,
-            (uintptr_t)cmd->stderr);
-            */
 
     // Determine the value of "argc" and how much data we will need to store ARGV
     // (Include the simple_cmd itself in ARGV)
@@ -190,29 +97,26 @@ err:
     return res;
 }
 
-static int
-exec_simple_cmd_thread_wrapper(void *arg)
-{
-    return exec_simple_cmd((struct simple_cmd*)arg);
-}
-
-
 // Consumes cmd even on failure
 int
 fork_simple_cmd(
         struct simple_cmd *cmd,
         pid_t *pid)
 {
-    int res = create_thread(
-            exec_simple_cmd_thread_wrapper,
-            (void*)cmd,
-            pid);
-    if(res) {
-        // The thread failure to run, so
-        // we need to free the simple_cmd
+    int res;
+    int child_pid = fork();
+
+    if(child_pid == 0) {
+	// We are the child
+	res = exec_simple_cmd(cmd);
+	// Should never reach here
+	exit(res);
+    } else {
+	// We are the parent
         destroy_simple_cmd(cmd);
+	*pid = child_pid;
+	return 0;
     }
-    return res;
 }
 
 struct simple_cmd *
@@ -250,6 +154,7 @@ parse_simple_cmd(const char *raw)
     cmd->stdin = 0;
     cmd->stdout = 1;
     cmd->stderr = 2;
+    cmd->bg = 0;
 
     {
         cmd->args = NULL;
@@ -286,6 +191,18 @@ parse_simple_cmd(const char *raw)
             }
             i += arglen;
         }
+    }
+
+    {
+	struct cmd_arg *arg = cmd->args;
+	while(arg->next) {
+	    arg = arg->next;
+	}
+	if(arg && (strcmp(arg->value, "&") == 0)) {
+	    arg->prev->next = NULL;
+	    cmd->bg = 1;
+	    free(arg);
+	}
     }
 
     return cmd;
@@ -337,34 +254,38 @@ void
 dump_cmd(struct cmd *cmd) {
     switch(cmd->type) {
         case CMD_SIMPLE:
-            printf("SIMPLE(%s)(in=%p,out=%p,err=%p)", cmd->primary->command,
+            printf("SIMPLE(%s)(in=%p,out=%p,err=%p,bg=%d)", cmd->primary->command,
                     (uintptr_t)cmd->primary->stdin,
                     (uintptr_t)cmd->primary->stdout,
-                    (uintptr_t)cmd->primary->stderr);
+                    (uintptr_t)cmd->primary->stderr,
+		    (int)cmd->primary->bg);
             break;
         case CMD_SECONDARY_INPUT:
             printf("(");
             dump_cmd(cmd->secondary);
-            printf(" | SIMPLE(%s)(in=%p,out=%p,err=%p))", cmd->primary->command,
+            printf(" | SIMPLE(%s)(in=%p,out=%p,err=%p,bg=%d))", cmd->primary->command,
                     (uintptr_t)cmd->primary->stdin,
                     (uintptr_t)cmd->primary->stdout,
-                    (uintptr_t)cmd->primary->stderr);
+                    (uintptr_t)cmd->primary->stderr,
+		    (int)cmd->primary->bg);
             break;
         case CMD_SECONDARY_AND:
             printf("(");
             dump_cmd(cmd->secondary);
-            printf(" && SIMPLE(%s)(in=%p,out=%p,err=%p))", cmd->primary->command,
+            printf(" && SIMPLE(%s)(in=%p,out=%p,err=%p,bg=%d))", cmd->primary->command,
                     (uintptr_t)cmd->primary->stdin,
                     (uintptr_t)cmd->primary->stdout,
-                    (uintptr_t)cmd->primary->stderr);
+                    (uintptr_t)cmd->primary->stderr,
+		    (int)cmd->primary->bg);
             break;
         case CMD_SECONDARY_OR:
             printf("(");
             dump_cmd(cmd->secondary);
-            printf(" || SIMPLE(%s)(in=%p,out=%p,err=%p))", cmd->primary->command,
+            printf(" || SIMPLE(%s)(in=%p,out=%p,err=%p,bg=%d))", cmd->primary->command,
                     (uintptr_t)cmd->primary->stdin,
                     (uintptr_t)cmd->primary->stdout,
-                    (uintptr_t)cmd->primary->stderr);
+                    (uintptr_t)cmd->primary->stderr,
+		    (int)cmd->primary->bg);
             break;
         default:
             printf("ERROR");
@@ -410,29 +331,25 @@ exec_cmd(struct cmd *cmd)
     }
 }
 
-static int
-exec_cmd_thread_wrapper(void *arg)
-{
-    return exec_cmd((struct cmd*)arg);
-}
-
-
 // Consumes cmd even on failure
 int
 fork_cmd(
         struct cmd *cmd,
         pid_t *pid)
 {
-    int res = create_thread(
-            exec_cmd_thread_wrapper,
-            (void*)cmd,
-            pid);
-    if(res) {
-        // The thread failure to run, so
-        // we need to free the simple_cmd
+    int res;
+    int child_pid = fork();
+    if(child_pid == 0) {
+	// We are the child
+	res = exec_cmd(cmd);
+	// Should never reach here
+	exit(res);
+    } else {
+	// We are the parent
         destroy_cmd(cmd);
+	*pid = child_pid;
+	return 0;
     }
-    return res;
 }
 
 struct cmd *
@@ -456,7 +373,7 @@ parse_cmd(struct simple_cmd *simple)
         if(strcmp(iter->value, "|") == 0) {
 
             fd_t pipe_fd;
-            int res = kanawha_sys_pipe(0, &pipe_fd);
+            int res = kanawha_sys_pipe(0, 0, &pipe_fd);
             if(res) {
                 destroy_simple_cmd(simple);
                 free(cmd);

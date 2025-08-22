@@ -27,33 +27,32 @@ handle_sgr(
             case 0: // Reset
                 tdata->cur_fg_color = palette_read_color(tdata->palette, DEFAULT_FG_COLOR_INDEX);
                 tdata->cur_bg_color = palette_read_color(tdata->palette, DEFAULT_BG_COLOR_INDEX);
-                tdata->cur_bold = 0;
-                tdata->cur_italic = 0;
-                tdata->cur_underline = 0;
+                tdata->bold_on = 0;
+                tdata->italic_on = 0;
+                tdata->underline_on = 0;
                 continue;
             case 1: // Bold
-                tdata->cur_bold = 1;
+                tdata->bold_on = 1;
                 continue;
             case 3: // Italic
-                tdata->cur_italic = 1;
+                tdata->italic_on = 1;
                 continue;
             case 4: // Underline
-                tdata->cur_underline = 1;
+                tdata->underline_on = 1;
                 continue;
             case 7: // Invert
                 temp_color = tdata->cur_fg_color;
                 tdata->cur_fg_color = tdata->cur_bg_color;
                 tdata->cur_bg_color = temp_color;
                 continue;
-
             case 22: // Normal Intensity
-                tdata->cur_bold = 0;
+                tdata->bold_on = 0;
                 continue;
             case 23: // Not Italic
-                tdata->cur_italic = 0;
+                tdata->italic_on = 0;
                 continue;
             case 24: // Not Underline
-                tdata->cur_underline = 0;
+                tdata->underline_on = 0;
                 continue;
 
             case 39:
@@ -78,12 +77,12 @@ handle_sgr(
 
         if(90 <= n && n <= 97) {
             int index = n - 90;
-            tdata->cur_fg_color = palette_read_color(tdata->palette, 7 + index);
+            tdata->cur_fg_color = palette_read_color(tdata->palette, 8 + index);
             continue;
         }
         if(100 <= n && n <= 107) {
             int index = n - 100;
-            tdata->cur_bg_color = palette_read_color(tdata->palette, 7 + index);
+            tdata->cur_bg_color = palette_read_color(tdata->palette, 8 + index);
             continue;
         }
 
@@ -369,6 +368,7 @@ static inline void
 handle_escape(struct terminal_data *tdata)
 {
     char c = fgetc(tdata->input_file);
+
     switch(c) {
         case '[':
             return handle_csi(tdata);
@@ -401,60 +401,70 @@ handle_escape(struct terminal_data *tdata)
 
 
 int
-run_ansi_terminal(void)
+ansi_terminal_init(
+	struct terminal_data *tdata)
 {
-    struct terminal_data *tdata = &terminal_data;
     tdata->palette = &ansi256;
 
-    LOG(tdata, "starting terminal thread\n");
-
     terminal_mark_redraw_all(tdata);
-    while(tdata->running) {
-        char c = fgetc(tdata->input_file);
-        //LOG(tdata, "got character 0x%x\n", (unsigned int)c);
-        switch(c) {
-            case '\r':
-                tdata->cursor_x = 0;
-                break;
-            case '\n':
-                tdata->cursor_x = 0;
-                terminal_newline(tdata);
-                break;
-            case '\b':
-                if(tdata->cursor_x > 0) {
-                    tdata->cursor_x--;
-                    terminal_mark_redraw(tdata, tdata->cursor_x+1, tdata->cursor_y);
-                    terminal_mark_redraw(tdata, tdata->cursor_x, tdata->cursor_y);
+
+    return 0;
+}
+
+int
+ansi_terminal_update(
+	struct terminal_data *tdata)
+{
+    char c = fgetc(tdata->input_file);
+
+    switch(c) {
+        case '\r':
+            tdata->cursor_x = 0;
+            break;
+        case '\n':
+            tdata->cursor_x = 0;
+            terminal_newline(tdata);
+            break;
+        case '\b':
+            if(tdata->cursor_x > 0) {
+                tdata->cursor_x--;
+                terminal_mark_redraw(tdata, tdata->cursor_x+1, tdata->cursor_y);
+                terminal_mark_redraw(tdata, tdata->cursor_x, tdata->cursor_y);
+            }
+            break;
+        case '\t':
+            for(size_t i = 0; i < tdata->tabsize; i++) {
+                terminal_put_at_cursor(tdata, ' ');
+                terminal_advance_cursor(tdata);
+                if(tdata->cursor_x % tdata->tabsize == 0) {
+                    break;
                 }
-                break;
-            case '\t':
-                for(size_t i = 0; i < tdata->tabsize; i++) {
-                    terminal_put_at_cursor(tdata, ' ');
-                    terminal_advance_cursor(tdata);
-                    if(tdata->cursor_x % tdata->tabsize == 0) {
-                        break;
-                    }
-                }
-                break;
-            case 07:
-                // BEL (ignore)
-                LOG(tdata, "Received BEL (ignoring...)\n");
-                break;
-            case 033:
-                handle_escape(tdata);
-                break;
-            default:
-                if(isprint(c)) {
-                    terminal_put_at_cursor(tdata, c);
-                    terminal_advance_cursor(tdata);
-                    tdata->last_character = c;
-                } else {
-                    LOG(tdata, "Unexpected un-printable character 0x%x\n", (unsigned int)c);
-                    terminal_put_at_cursor(tdata, '?');
-                    terminal_advance_cursor(tdata);
-                }
-                break;
-        }
+            }
+            break;
+        case 07:
+            // BEL (ignore)
+            LOG(tdata, "Received BEL (ignoring...)\n");
+            break;
+        case 033:
+            handle_escape(tdata);
+            break;
+        case ('p' - 'a') + 1: // Ctrl-P
+    	tdata->req_fb_mode++;
+    	break;
+        case ('o' - 'a') + 1: // Ctrl-O
+    	tdata->req_fb_mode--;
+    	break;
+        default:
+            if(isprint(c)) {
+                terminal_put_at_cursor(tdata, c);
+                terminal_advance_cursor(tdata);
+                tdata->last_character = c;
+            } else {
+                LOG(tdata, "Unexpected un-printable character 0x%x\n", (unsigned int)c);
+                terminal_put_at_cursor(tdata, '?');
+                terminal_advance_cursor(tdata);
+            }
+            break;
     }
 
     return 0;
@@ -518,9 +528,9 @@ const static color_t COLOR_BRIGHT_WHITE = {
     .a = 0xFF,
 };
 const static color_t COLOR_BRIGHT_BLACK = {
-    .r = 0x80,
-    .g = 0x80,
-    .b = 0x80,
+    .r = 0x60,
+    .g = 0x60,
+    .b = 0x60,
     .a = 0xFF,
 };
 const static color_t COLOR_BRIGHT_RED = {

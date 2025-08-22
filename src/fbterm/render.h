@@ -3,10 +3,10 @@
 
 #include "term.h"
 #include "font.h"
-#include "kanawha/kfb.h"
+#include "kfb/kfb.h"
 
 int
-run_renderer(
+render_update(
         struct terminal_data *tdata,
         struct font_data *fdata,
         struct kfb_framebuffer *fb,

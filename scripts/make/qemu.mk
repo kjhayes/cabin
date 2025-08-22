@@ -8,8 +8,13 @@ QEMU_FLAGS += -D $(QEMU_DEBUG_LOG) -d guest_errors
 QEMU_FLAGS += -trace "usb_*"
 
 #QEMU_FLAGS += -device virtio-gpu-pci
-#QEMU_FLAGS += -drive file=$(ROOT_DIR)/disk.img,if=none,id=virtio-disk0,format=raw \
-			  -device virtio-blk-pci,drive=virtio-disk0,id=disk0
+
+QEMU_FLAGS += -drive file=$(ROOT_DIR)/root.ext2,if=none,id=virtio-disk-root,format=raw \
+			  -device virtio-blk-pci,drive=virtio-disk-root,id=root-disk
+
+QEMU_FLAGS += -drive id=ahcidisk,file=ahci.img,if=none \
+              -device ahci,id=ahci \
+              -device ide-hd,drive=ahcidisk,bus=ahci.0
 
 QEMU_FLAGS += -device virtio-rng
 

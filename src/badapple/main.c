@@ -6,47 +6,13 @@
 #include <kanawha/kbd.h>
 #include <kanawha/time.h>
 #include <kanawha/sys-wrappers.h>
-#include <kanawha/kfb.h>
-
-struct image {
-    const uint32_t *width;
-    const uint32_t *height;
-    const uint32_t *data;
-};
-
-
-extern const uint32_t whiscash_width;
-extern const uint32_t whiscash_height;
-extern const uint32_t whiscash[];
-
-extern const uint32_t parrot_width;
-extern const uint32_t parrot_height;
-extern const uint32_t parrot[];
-
-static struct image images[] = {
-    {
-        .width = &whiscash_width,
-        .height = &whiscash_height,
-        .data = whiscash,
-    },
-    {
-        .width = &parrot_width,
-        .height = &parrot_height,
-        .data = parrot,
-    },
-};
-
-#define NUM_IMAGES (sizeof(images) / sizeof(images[0]))
+#include <kfb/kfb.h>
+#include "loadpng.h"
 
 static int kfb_framebuffer_mode = -ENXIO;
 static struct kfb_framebuffer *kfb_buffer = NULL;
 
-static int current_image = 0;
-
-static int width;
-static int height;
-
-#define MOVE_SPEED 2
+static const char *frame_path_prefix = "./";
 
 static fd_t kbd_file;
 
@@ -66,18 +32,6 @@ static int get_input(void)
     int pressed = (event.motion == KBD_MOTION_PRESSED) || (event.motion == KBD_MOTION_HELD);
     if(pressed) {
         switch(event.key) {
-          case KBD_KEY_O:
-            if(current_image < NUM_IMAGES-1) {
-                current_image++;
-                printf("Set current image to %d\n", current_image);
-            }
-            break;
-          case KBD_KEY_I:
-            if(current_image > 0) {
-                current_image--;
-                printf("Set current image to %d\n", current_image);
-            }
-            break;
           case KBD_KEY_0:
             kfb_framebuffer_mode++;
             res = kfb_set_current_mode(kfb_buffer, kfb_framebuffer_mode);
@@ -97,47 +51,44 @@ static int get_input(void)
                 printf("Changed to mode: %d\n", kfb_framebuffer_mode);
             }
             break;
-          case KBD_KEY_L:
-            width += MOVE_SPEED;
-            break;
-          case KBD_KEY_H:
-            width -= MOVE_SPEED;
-            if (width < 0) {
-                width = 0;
-            }
-            break;
-          case KBD_KEY_J:
-            height += MOVE_SPEED;
-            break;
-          case KBD_KEY_K:
-            height -= MOVE_SPEED;
-            if (height < 0) {
-                height = 0;
-            }
-            break;
           default:
             break;
         }
     }
-
-
 }
 
 static int draw_frame(void)
 {
     int res;
-    struct image *cur_image = &images[current_image];
+
+    static char image_name[128];
+    static int frame_no = 1;
+
+    snprintf(image_name, 128, "%sbad_apple_%03d.png", frame_path_prefix, frame_no);
+    image_name[127] = '\0';
+
+    struct PNGImage *cur_image = load_png_rgba(image_name);
+
+    if(cur_image == NULL) {
+	printf("Failed to load image %s (Resetting)\n", image_name);
+	frame_no = 1;
+	return 0;
+    } else {
+	frame_no++;
+    }
+
     struct kfb_image img = {
         .data = (void*)cur_image->data,
-        .resx = *cur_image->width,
-        .resy = *cur_image->height,
-        .order = FB_LAYER_ORDER_ROW_MAJOR,
-        .format = FB_LAYER_FORMAT_RGBA32,
+        .resx = cur_image->width,
+        .resy = cur_image->height,
+        .order = GFX_ORDER_ROW_MAJOR,
+        .format = GFX_FORMAT_RGBA32,
         .offset = 0,
         .stride = 4,
-        .data_size = (*cur_image->width)*(*cur_image->height)*4,
+        .data_size = (cur_image->width)*(cur_image->height)*4,
     };
 
+    printf("Drawing Frame: %s\n", image_name);
     //printf("Drawing Frame (width=%lu,height=%lu)\n",
     //        (unsigned long)kfb_buffer->current_mode_info->layer_infos[0].width,
     //        (unsigned long)kfb_buffer->current_mode_info->layer_infos[0].height
@@ -147,13 +98,15 @@ static int draw_frame(void)
             0,
             &img,
             0, 0,
-            width,
-            height
+            kfb_buffer->current_mode_info->layer_infos[0].layout.width, 
+            kfb_buffer->current_mode_info->layer_infos[0].layout.height 
             );
     if(res) {
         fprintf(stderr, "Failed to blit frame! err=%d\n", res);
         return res;
     }
+
+    free_png_image(cur_image);
 
     res = kfb_flush_framebuffer(kfb_buffer);
     if(res) {
@@ -167,10 +120,9 @@ int main(int argc, const char **argv)
     int res;
 
     if(argc < 3) {
-        fprintf(stderr, "Usage: whiscash [FB-PATH] [KBD-PATH]\n");
+        fprintf(stderr, "Usage: badapple [FB-PATH] [KBD-PATH]\n");
         exit(-1);
     }
-
 
     const char *fb_path = argv[1];
     kfb_buffer = kfb_load_framebuffer(fb_path);
@@ -197,9 +149,6 @@ int main(int argc, const char **argv)
         fprintf(stderr, "Failed to open \"%s\"\n", kbd_path);
         exit(-1);
     }
-
-    width = kfb_buffer->current_mode_info->layer_infos[0].width;
-    height = kfb_buffer->current_mode_info->layer_infos[0].height;
 
     while(1) {
         draw_frame();

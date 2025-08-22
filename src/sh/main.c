@@ -2,7 +2,6 @@
 #include <kanawha/sys-wrappers.h>
 #include "command.h"
 #include "directive.h"
-#include "thread.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -43,8 +42,12 @@ run_line(const char *raw)
         if(res) {
             return res;
         }
-        int exitcode;
-        while(kanawha_sys_reap(0, &child, &exitcode)) {}
+	if(!simple->bg) {
+            int exitcode;
+            while(kanawha_sys_reap(0, &child, &exitcode)) {}
+	} else {
+	    printf("Command running in background...\n");
+	}
         return 0;
     }
 }
@@ -53,11 +56,6 @@ int
 main(int argc, const char **argv)
 {
     int res;
-    res = init_threads();
-    if(res) {
-        fprintf(stderr, "Failed to initialize threads!\n");
-        exit(EXIT_FAILURE);
-    }
 
     int running = 1;
 
@@ -69,6 +67,7 @@ main(int argc, const char **argv)
     }
 
     int interactive;
+    int echo = 0;
 
     char *script_buffer = NULL;
     size_t script_size = 0;
@@ -128,6 +127,15 @@ main(int argc, const char **argv)
             int i;
             if(interactive) {
                 i = getchar();
+
+                if(i == EOF) {
+		    if(feof(stdin)) {
+                        kanawha_sys_exit(0);
+		    } else {
+			perror("reading from stdin");
+		    }
+                }
+
             } else {
                 if(script_index >= script_size) {
                     running = 0;
@@ -135,16 +143,16 @@ main(int argc, const char **argv)
                 }
                 i = script_buffer[script_index];
                 script_index++;
-            }
 
-            if(i == EOF) {
-                kanawha_sys_exit(0);
+		if(i == EOF) {
+		    kanawha_sys_exit(0);
+		}
             }
 
             char c = i;
 
             if(c == '\n' || c == '\r') {
-                if(interactive) {
+                if(echo) {
                     puts("\n");
                 }
                 break;
@@ -156,7 +164,7 @@ main(int argc, const char **argv)
               case 127:
                 if(input_end > 0) {
                     input_end--;
-                    if(interactive) {
+                    if(echo) {
                         putchar('\b');
                         putchar(' ');
                         putchar('\b');
@@ -169,7 +177,7 @@ main(int argc, const char **argv)
                 continue;
             }
 
-            if(interactive) {
+            if(echo) {
                 putchar(c);
             }
 

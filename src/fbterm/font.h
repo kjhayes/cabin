@@ -4,7 +4,7 @@
 #include "color.h"
 #include <stddef.h>
 #include <stdint.h>
-#include "kanawha/kfb.h"
+#include "kfb/kfb.h"
 
 struct glyph_data {
     struct kfb_image *fg;

@@ -6,7 +6,7 @@
 #include <string.h>
 #include "font.h"
 
-#define GLYPH_FORMAT FB_LAYER_FORMAT_RGBA32
+#define GLYPH_FORMAT GFX_FORMAT_RGBA32
 
 struct psf_1_header {
     uint8_t magic[2];
@@ -98,7 +98,7 @@ load_font(const char *path)
         fg_img->resy = fdata->height;
         fg_img->data = (void*)fg_pixel_data;
         fg_img->format = GLYPH_FORMAT;
-        fg_img->order = FB_LAYER_ORDER_ROW_MAJOR;
+        fg_img->order = GFX_ORDER_ROW_MAJOR;
         fg_img->stride = sizeof(color_t);
         fg_img->offset = 0;
         fg_img->data_size = fg_img->resx * fg_img->resy * sizeof(color_t);
@@ -107,7 +107,7 @@ load_font(const char *path)
         bg_img->resy = fdata->height;
         bg_img->data = (void*)bg_pixel_data;
         bg_img->format = GLYPH_FORMAT;
-        bg_img->order = FB_LAYER_ORDER_ROW_MAJOR;
+        bg_img->order = GFX_ORDER_ROW_MAJOR;
         bg_img->stride = sizeof(color_t);
         bg_img->offset = 0;
         bg_img->data_size = bg_img->resx * bg_img->resy * sizeof(color_t);

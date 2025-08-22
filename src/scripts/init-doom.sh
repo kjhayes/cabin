@@ -30,5 +30,4 @@ setenv PATH /sys/initrd/
 write -of /sys/fb/vga/mode 1
 
 cd /sys/initrd/
-doomgeneric /sys/fb/vga /sys/kbd/ps2-kbd-0
 

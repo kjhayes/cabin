@@ -1,7 +1,9 @@
 
-mount /ramfile ramfile -t sys -s
-mount /initrd /ramfile/initrd -t cpio
-mount /root /initrd/disk.img -t ext2
+mount /root ramfs -t ramfs -s
+mount /term termdev -t sys -s
+setstdin /term/COM0
+setstdout /term/COM0
+setstderr /term/COM0
 
 mkdir /root/sys
 
@@ -12,52 +14,68 @@ mount /root/sys/initrd /root/sys/ramfile/initrd -t cpio
 
 chroot /root
 
-setenv PATH /sys/initrd/;/usr/bin/
+setenv PATH /bin/;/usr/bin/;/sys/initrd/;/sys/initrd/bin/;/sys/rootdisk/usr/bin/
 
-mkdir /sys/chr
-mount /sys/chr chardev -t sys -s
+mkdir /dev
+mkdir /dev/term
+mount /dev/term termdev -t sys -s
+mkdir /dev/kbd
+mount /dev/kbd kbd -t sys -s
+mkdir /dev/fb
+mount /dev/fb fbdev -t sys -s
+mkdir /dev/rand
+mount /dev/rand randdev -t sys -s
+mkdir /dev/blk
+mount /dev/blk blkdev -t sys -s
+mkdir /dev/eth
+mount /dev/eth ethdev -t sys -s
+mkdir /dev/ipv4
+mount /dev/ipv4 ipv4 -t sys -s
+mkdir /dev/shm
+mount /dev/shm ramfs -t ramfs -s
 
-mkdir /sys/kbd
-mount /sys/kbd kbd -t sys -s
 mkdir /sys/info
 mount /sys/info info -t sys -s
-mkdir /sys/fb
-mount /sys/fb fbdev -t sys -s
-mkdir /sys/rand
-mount /sys/rand randdev -t sys -s
-mkdir /sys/blk
-mount /sys/blk blkdev -t sys -s
 mkdir /sys/pci
 mount /sys/pci pci -t sys -s
 mkdir /sys/acpi
 mount /sys/acpi acpi -t sys -s
 mkdir /sys/proc
 mount /sys/proc proc -t sys -s
-mkdir /sys/eth
-mount /sys/eth ethdev -t sys -s
-mkdir /sys/ipv4
-mount /sys/ipv4 ipv4 -t sys -s
-
-setstdout /sys/chr/COM0
-setstderr /sys/chr/COM0
-setstdin /sys/chr/COM0
-
-mkdir /ramfs
-mount /ramfs ramfs -t ramfs -s
-
-mkdir fat
-mount /fat /sys/initrd/fatdisk.img -t fat
-
-write -of /sys/fb/vga/mode 3
-xlatekbd /sys/kbd/ps2-kbd-0 | sh | fbterm -m 3 -l 0 -f /sys/fb/vga -t /sys/initrd/standard.psf -d /sys/chr/COM0
-
-#whiscash /sys/fb/vga /sys/kbd/ps2-kbd-0
-#doomgeneric /sys/fb/vga /sys/kbd/ps2-kbd-0
+mkdir /sys/udrv
+mount /sys/udrv udrv -t sys -s
 
 
-#setstdout /sys/chr/vga-serial
-#setstderr /sys/chr/vga-serial
-#xlatekbd /sys/kbd/ps2-kbd-0 | sh
+mkdir /sys/rootdisk
+mount /sys/rootdisk /dev/blk/virtio-blk-0 -t ext2
 
-#xlatekbd /sys/kbd/ps2-kbd-0 | sh | fbterm -m 2 -l 0 -f /sys/fb/vga -t /sys/initrd/standard.psf -d /fbterm.log
+setenv SHELL /sys/initrd/sh
+
+setstdout /dev/term/COM0
+setstderr /dev/term/COM0
+setstdin  /dev/term/COM0
+
+mkudrv term console
+xlatekbd /dev/kbd/ps2-kbd-0 | udrv_term -i /sys/udrv/term/console &
+udrv_term -o /sys/udrv/term/console | fbterm -m 1 -l 0 -f /dev/fb/vga -t /sys/initrd/standard.psf -d /dev/term/COM0 &
+
+setstdin /dev/term/console
+setstdout /dev/term/console
+setstderr /dev/term/console
+
+exec sh
+
+cd /sys/initrd
+doomgeneric /dev/fb/vga /dev/kbd/ps2-kbd-0
+
+# udrv_rand &
+# cat /dev/rand/udrv
+
+#lua /sys/rootdisk/init/init.lua
+
+#write -of /dev/fb/vga/mode 1
+# cd /sys/initrd
+# badapple /dev/fb/vga /dev/kbd/ps2-kbd-0
+
+# xlatekbd /dev/kbd/ps2-kbd-0 | sh | fbterm -m 1 -l 0 -f /dev/fb/vga -t /sys/initrd/standard.psf -d /dev/term/COM0
 

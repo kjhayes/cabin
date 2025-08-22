@@ -1,5 +1,5 @@
 
-#include "kanawha/kfb.h"
+#include "kfb/kfb.h"
 #include "term.h"
 
 int

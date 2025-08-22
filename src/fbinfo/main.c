@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "kanawha/kfb.h"
+#include "kfb/kfb.h"
 
 static const char *progname = "fbinfo";
 
@@ -39,12 +39,12 @@ int main(int argc, const char **argv)
         for(size_t i = 0; i < info->layer_count; i++) {
             struct fb_layer_info *layer = &info->layer_infos[i];
             printf("\tLayer[%ld] {\n", i);
-            printf("\t\torder=0x%x\n", layer->order);
-            printf("\t\tformat=0x%x\n", layer->format);
-            printf("\t\twidth=%lu\n", layer->width);
-            printf("\t\theight=%lu\n", layer->height);
-            printf("\t\toffset=%lu\n", layer->offset);
-            printf("\t\tstride=%lu\n", layer->stride);
+            printf("\t\torder=0x%x\n", layer->layout.order);
+            printf("\t\tformat=0x%x\n",layer->layout.format);
+            printf("\t\twidth=%lu\n",  layer->layout.width);
+            printf("\t\theight=%lu\n", layer->layout.height);
+            printf("\t\toffset=%lu\n", layer->layout.offset);
+            printf("\t\tstride=%lu\n", layer->layout.stride);
             printf("\t}\n");
         }
 

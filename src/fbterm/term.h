@@ -23,15 +23,20 @@ extern struct terminal_data
     FILE *log_file;
 
     // Draw Data
+    size_t req_fb_mode;
+    size_t cur_fb_mode;
+
     size_t cursor_x;
     size_t cursor_y;
     color_t cur_fg_color;
     color_t cur_bg_color;
-    int cur_bold;
-    int cur_italic;
-    int cur_underline;
     size_t tabsize;
     size_t last_character;
+
+    unsigned echo_on : 1;
+    unsigned bold_on : 1;
+    unsigned italic_on : 1;
+    unsigned underline_on : 1;
 
     struct palette *palette;
 
@@ -47,7 +52,7 @@ extern struct terminal_data
 
 // "input" must outlive this terminal
 int
-init_terminal(FILE *input, FILE *log_file, size_t width, size_t height);
+init_terminal(FILE *input, FILE *log_file, size_t width, size_t height, size_t mode);
 
 void
 deinit_terminal(void);
