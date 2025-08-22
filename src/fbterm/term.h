@@ -57,6 +57,12 @@ init_terminal(FILE *input, FILE *log_file, size_t width, size_t height, size_t m
 void
 deinit_terminal(void);
 
+int
+terminal_resize(
+	struct terminal_data *tdata,
+	size_t width,
+	size_t height);
+
 void
 terminal_mark_redraw(struct terminal_data *tdata, size_t __x, size_t __y);
 void

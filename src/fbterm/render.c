@@ -258,9 +258,26 @@ render_update(
     if(tdata->cur_fb_mode != tdata->req_fb_mode) {
         res = kfb_set_current_mode(fb, tdata->req_fb_mode);
         if(res) {
-    	tdata->req_fb_mode = tdata->cur_fb_mode;
+    	    tdata->req_fb_mode = tdata->cur_fb_mode;
         } else {
-    	tdata->cur_fb_mode = tdata->req_fb_mode;
+    	    tdata->cur_fb_mode = tdata->req_fb_mode;
+	    size_t pix_width, pix_height;
+	    switch(fb->current_mode_info->layer_infos[0].layout.format) {
+		case GFX_FORMAT_ASCII:
+		case GFX_FORMAT_VGA_CHAR:
+		case GFX_FORMAT_VGA_ATTR:
+		    terminal_resize(tdata,
+			    fb->current_mode_info->layer_infos[0].layout.width,
+			    fb->current_mode_info->layer_infos[0].layout.height);
+		    break;
+		default:
+		   pix_width = fb->current_mode_info->layer_infos[0].layout.width;
+		   pix_height = fb->current_mode_info->layer_infos[0].layout.height;
+		   terminal_resize(tdata,
+			   pix_width / fdata->width,
+			   pix_height / fdata->height);
+		   break;
+	    }
         }
         force = 1;
     }
