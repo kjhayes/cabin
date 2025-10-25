@@ -49,7 +49,7 @@ QEMU_DEPS += $(ISO)
 QEMU_FLAGS += -cdrom $(ISO)
 
 QEMU_FLAGS += -serial stdio
-QEMU_FLAGS += -smp 1
+QEMU_FLAGS += -smp 4
 
 QEMU_FLAGS += -vga none
 QEMU_FLAGS += -device VGA

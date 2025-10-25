@@ -103,9 +103,11 @@ render_ascii_glyph(
 
     char c = terminal_data.character_buffer[x + (y * tdata->width)];
 
-    if(fb->have_buffer_data) {
-	fb->buffer_data[offset] = c;
-    }
+    kfb_framebuffer_copy_direct(
+	    fb,
+	    offset,
+	    &c,
+	    1);
 
     return;
 }
@@ -201,9 +203,11 @@ render_vga_attr(
         }
     }
 
-    if(fb->have_buffer_data) {
-	fb->buffer_data[offset] = attr;
-    }
+    kfb_framebuffer_copy_direct(
+	    fb,
+	    offset,
+	    &attr,
+	    1);
 
     return;
 }
@@ -248,12 +252,11 @@ render_update(
 {
     int res;
 
-    int render_changed = 0;
-
 #define RENDER_DELAY_MS 1
 #define FORCE_FLUSH_AFTER 10
 
     int force = 1;
+    int render_changed = 1;
 
     if(tdata->cur_fb_mode != tdata->req_fb_mode) {
         res = kfb_set_current_mode(fb, tdata->req_fb_mode);
@@ -283,7 +286,7 @@ render_update(
     }
 
     render_all(force, tdata, fdata, fb, &render_changed);
-    if(render_changed) {
+    if(render_changed || force) {
         kfb_flush_framebuffer(fb);
         render_changed = 0;
 	force = 0;

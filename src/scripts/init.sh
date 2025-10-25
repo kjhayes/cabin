@@ -1,9 +1,9 @@
 
 mount /root ramfs -t ramfs -s
 mount /term termdev -t sys -s
-setstdin /term/COM0
-setstdout /term/COM0
-setstderr /term/COM0
+setstdin /term/COM1
+setstdout /term/COM1
+setstderr /term/COM1
 
 mkdir /root/sys
 
@@ -45,37 +45,36 @@ mount /sys/proc proc -t sys -s
 mkdir /sys/udrv
 mount /sys/udrv udrv -t sys -s
 
-
-mkdir /sys/rootdisk
-mount /sys/rootdisk /dev/blk/virtio-blk-0 -t ext2
-
 setenv SHELL /sys/initrd/sh
 
-setstdout /dev/term/COM0
-setstderr /dev/term/COM0
-setstdin  /dev/term/COM0
+setstdout /dev/term/COM1
+setstderr /dev/term/COM1
+setstdin  /dev/term/COM1
+
+seat /dev/kbd/ps2-kbd-0 /dev/fb/vga 2 3 &
+#seat /dev/kbd/ps2-kbd-0 /dev/fb/virtio-gpu-0 0 0 &
+
+sleep 5000
 
 mkudrv term console
-xlatekbd /dev/kbd/ps2-kbd-0 | udrv_term -i /sys/udrv/term/console &
-udrv_term -o /sys/udrv/term/console | fbterm -m 1 -l 0 -f /dev/fb/vga -t /sys/initrd/standard.psf -d /dev/term/COM0 &
+xlatekbd /dev/kbd/seat-0 | udrv_term -i /sys/udrv/term/console &
+udrv_term -o /sys/udrv/term/console | fbterm -m 0 -l 0 -f /dev/fb/seat-0 -t /sys/initrd/arm8.psf -d /dev/term/COM1 &
+
+cd /sys/initrd
+doomgeneric /dev/fb/seat-1 /dev/kbd/seat-1 &
+cd /
 
 setstdin /dev/term/console
 setstdout /dev/term/console
 setstderr /dev/term/console
-
 exec sh
-
-cd /sys/initrd
-doomgeneric /dev/fb/vga /dev/kbd/ps2-kbd-0
 
 # udrv_rand &
 # cat /dev/rand/udrv
-
-#lua /sys/rootdisk/init/init.lua
 
 #write -of /dev/fb/vga/mode 1
 # cd /sys/initrd
 # badapple /dev/fb/vga /dev/kbd/ps2-kbd-0
 
-# xlatekbd /dev/kbd/ps2-kbd-0 | sh | fbterm -m 1 -l 0 -f /dev/fb/vga -t /sys/initrd/standard.psf -d /dev/term/COM0
+# xlatekbd /dev/kbd/ps2-kbd-0 | sh | fbterm -m 1 -l 0 -f /dev/fb/vga -t /sys/initrd/standard.psf -d /dev/term/COM1
 

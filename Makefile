@@ -71,7 +71,8 @@ COMMON_FLAGS += \
 				-fno-pie \
 				-fno-pic \
 
-EXTRA_LIBS += -lpng -lm -lkfb -lz
+EXTRA_LIBS += -lkfb
+#EXTRA_LIBS += -lpng -lm -lz
 
 COMMON_DEPS += $(AUTOCONF)
 AFLAGS += -D__ASSEMBLER__
@@ -82,6 +83,8 @@ COMMON_FLAGS += -g
 endif
 
 BINARIES := \
+	ls \
+	sleep \
 	cat \
 	more \
 	sh \
@@ -106,11 +109,11 @@ BINARIES := \
 	testdir \
 	nettest \
 	stress \
-	badapple \
 	colors \
 	udrv_rand \
 	mkudrv \
 	udrv_term \
+	seat \
 
 define binary_build_rules =
 
