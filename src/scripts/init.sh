@@ -1,6 +1,7 @@
 
 mount /root ramfs -t ramfs -s
 mount /term termdev -t sys -s
+
 setstdin /term/COM1
 setstdout /term/COM1
 setstderr /term/COM1
@@ -45,24 +46,27 @@ mount /sys/proc proc -t sys -s
 mkdir /sys/udrv
 mount /sys/udrv udrv -t sys -s
 
+# mkdir /ide
+# mount /ide /dev/blk/ide-0-primary -t ext2
+
 setenv SHELL /sys/initrd/sh
 
 setstdout /dev/term/COM1
 setstderr /dev/term/COM1
 setstdin  /dev/term/COM1
 
-seat /dev/kbd/ps2-kbd-0 /dev/fb/vga 2 3 &
+seat /dev/kbd/ps2-kbd-0 /dev/fb/vga 1 3 &
 #seat /dev/kbd/ps2-kbd-0 /dev/fb/virtio-gpu-0 0 0 &
 
-sleep 5000
+sleep 3000
 
 mkudrv term console
 xlatekbd /dev/kbd/seat-0 | udrv_term -i /sys/udrv/term/console &
 udrv_term -o /sys/udrv/term/console | fbterm -m 0 -l 0 -f /dev/fb/seat-0 -t /sys/initrd/arm8.psf -d /dev/term/COM1 &
 
-cd /sys/initrd
-doomgeneric /dev/fb/seat-1 /dev/kbd/seat-1 &
-cd /
+#cd /sys/initrd
+#doomgeneric /dev/fb/seat-1 /dev/kbd/seat-1 &
+#cd /
 
 setstdin /dev/term/console
 setstdout /dev/term/console
