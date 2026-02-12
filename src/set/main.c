@@ -9,7 +9,7 @@ const char *progname = "set";
 __attribute__((noreturn))
 static void
 panic_usage(void) {
-    fprintf(stderr, "Usage: %s [-f filename]\n",
+    fprintf(stderr, "Usage: %s [-f OUTPUT-PATH] [-n VALUE] [-i INPUT-PATH]\n",
             progname);
     exit(EXIT_FAILURE);
 }

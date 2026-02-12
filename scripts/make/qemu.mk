@@ -18,6 +18,9 @@ QEMU_FLAGS += -drive id=ahcidisk,file=ahci.img,if=none \
 
 QEMU_FLAGS += -device virtio-rng
 
+# QEMU_FLAGS += -audio driver=pa,model=virtio
+QEMU_FLAGS += -audiodev pa,id=speaker -machine pcspk-audiodev=speaker
+
 #QEMU_FLAGS += -drive id=disk,file=ahci.img,if=none \
               -device ahci,id=ahci \
               -device ide-hd,drive=disk,bus=ahci.0
@@ -39,6 +42,10 @@ QEMU_FLAGS += \
               -device usb-storage,bus=xhci.0,drive=stick0,id=stick0 \
               -drive if=none,id=stick1,format=raw,file=./usb1.img \
               -device usb-storage,bus=xhci.0,drive=stick1,id=stick1 \
+
+QEMU_FLAGS += \
+			  -drive file=nvme.img,if=none,id=nvm,format=raw \
+			  -device nvme,serial=deadbeef,drive=nvm
 
 #QEMU_FLAGS += -device e1000e
 

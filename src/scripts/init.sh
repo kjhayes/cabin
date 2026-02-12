@@ -28,6 +28,8 @@ mkdir /dev/rand
 mount /dev/rand randdev -t sys -s
 mkdir /dev/blk
 mount /dev/blk blkdev -t sys -s
+mkdir /dev/snd
+mount /dev/snd snddev -t sys -s
 mkdir /dev/eth
 mount /dev/eth ethdev -t sys -s
 mkdir /dev/ipv4
@@ -55,7 +57,7 @@ setstdout /dev/term/COM1
 setstderr /dev/term/COM1
 setstdin  /dev/term/COM1
 
-seat /dev/kbd/ps2-kbd-0 /dev/fb/vga 1 3 &
+seat /dev/kbd/ps2-kbd-0 /dev/fb/vga 1 0 1 2 3 4 &
 #seat /dev/kbd/ps2-kbd-0 /dev/fb/virtio-gpu-0 0 0 &
 
 sleep 3000
@@ -64,9 +66,13 @@ mkudrv term console
 xlatekbd /dev/kbd/seat-0 | udrv_term -i /sys/udrv/term/console &
 udrv_term -o /sys/udrv/term/console | fbterm -m 0 -l 0 -f /dev/fb/seat-0 -t /sys/initrd/arm8.psf -d /dev/term/COM1 &
 
-#cd /sys/initrd
-#doomgeneric /dev/fb/seat-1 /dev/kbd/seat-1 &
-#cd /
+cd /sys/initrd
+# doomgeneric /dev/fb/seat-1 /dev/kbd/seat-1 &
+# doomgeneric /dev/fb/seat-2 /dev/kbd/seat-2 &
+# doomgeneric /dev/fb/seat-3 /dev/kbd/seat-3 &
+# doomgeneric /dev/fb/seat-4 /dev/kbd/seat-4 &
+# doomgeneric /dev/fb/seat-5 /dev/kbd/seat-5 &
+cd /
 
 setstdin /dev/term/console
 setstdout /dev/term/console
